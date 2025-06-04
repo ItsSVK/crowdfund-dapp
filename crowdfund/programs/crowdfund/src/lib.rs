@@ -16,14 +16,14 @@ pub mod crowdfund {
         ctx: Context<CreateCampaign>,
         name: String,
         description: String,
-        target_amount: Option<u64>,
+        goal: u64,
         deadline: Option<i64>,
     ) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
         campaign.name = name;
         campaign.description = description;
         campaign.owner = *ctx.accounts.owner.key;
-        campaign.target_amount = target_amount;
+        campaign.goal = goal;
         campaign.deadline = deadline;
         campaign.total_amount_donated = 0;
         Ok(())
@@ -78,7 +78,7 @@ pub mod crowdfund {
         );
         // Check if goal was NOT reached
         require!(
-            campaign.target_amount.is_some() && campaign.total_amount_donated < campaign.target_amount.unwrap(),
+            campaign.total_amount_donated < campaign.goal,
             CustomError::CampaignGoalReached
         );
         // Check if already withdrawn
@@ -90,6 +90,30 @@ pub mod crowdfund {
         **ctx.accounts.contributor.to_account_info().try_borrow_mut_lamports()? += contributor_record.amount_donated;
         // Mark as withdrawn
         contributor_record.withdrawn = true;
+        Ok(())
+    }
+
+    pub fn withdraw_by_owner(ctx: Context<WithdrawByOwner>) -> Result<()> {
+        let campaign = &mut ctx.accounts.campaign;
+        let clock = Clock::get()?;
+        // Check deadline
+        require!(
+            campaign.deadline.is_some() && clock.unix_timestamp >= campaign.deadline.unwrap(),
+            CustomError::CampaignStillActive
+        );
+        // Check if goal was reached
+        require!(
+            campaign.total_amount_donated >= campaign.goal,
+            CustomError::CampaignGoalNotReached
+        );
+        // Check if already withdrawn
+        require!(!campaign.withdrawn_by_owner, CustomError::AlreadyWithdrawnByOwner);
+        // Transfer lamports from campaign to owner
+        let amount = campaign.total_amount_donated;
+        **campaign.to_account_info().try_borrow_mut_lamports()? -= amount;
+        **ctx.accounts.owner.try_borrow_mut_lamports()? += amount;
+        // Mark as withdrawn
+        campaign.withdrawn_by_owner = true;
         Ok(())
     }
 }
@@ -105,9 +129,10 @@ pub struct Campaign {
     #[max_len(256)]
     pub description: String,
     pub owner: Pubkey,
-    pub target_amount: Option<u64>,
+    pub goal: u64,
     pub deadline: Option<i64>,
     pub total_amount_donated: u64,
+    pub withdrawn_by_owner: bool,
 }
 
 #[derive(Accounts)]
@@ -162,6 +187,14 @@ pub struct WithdrawIfFailed<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct WithdrawByOwner<'info> {
+    #[account(mut, has_one = owner)]
+    pub campaign: Account<'info, Campaign>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+}
+
 impl ContributorRecord {
     pub const INIT_SPACE: usize = 8 + 32 + 32 + 8 + 1;
 }
@@ -180,4 +213,8 @@ pub enum CustomError {
     AlreadyWithdrawn,
     #[msg("Nothing to withdraw.")]
     NothingToWithdraw,
+    #[msg("The campaign goal was not reached.")]
+    CampaignGoalNotReached,
+    #[msg("Owner has already withdrawn.")]
+    AlreadyWithdrawnByOwner,
 }

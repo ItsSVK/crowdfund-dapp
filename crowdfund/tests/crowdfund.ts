@@ -20,7 +20,7 @@ describe('crowdfund', () => {
     const owner = provider.wallet as anchor.Wallet;
     const name = 'Test Campaign';
     const description = 'A test campaign for unit testing.';
-    const targetAmount = new anchor.BN(1000);
+    const goal = new anchor.BN(1000);
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 86400); // 1 day from now
 
     // Derive PDA
@@ -30,7 +30,7 @@ describe('crowdfund', () => {
     );
 
     await program.methods
-      .createCampaign(name, description, targetAmount, deadline)
+      .createCampaign(name, description, goal, deadline)
       .accounts({
         owner: owner.publicKey,
         // campaign: campaignPda,
@@ -46,9 +46,7 @@ describe('crowdfund', () => {
     expect(campaignAccount.owner.toBase58()).to.equal(
       owner.publicKey.toBase58()
     );
-    expect(campaignAccount.targetAmount.toString()).to.equal(
-      targetAmount.toString()
-    );
+    expect(campaignAccount.goal.toString()).to.equal(goal.toString());
     expect(campaignAccount.deadline.toString()).to.equal(deadline.toString());
     expect(campaignAccount.totalAmountDonated.toNumber()).to.equal(0);
   });
@@ -58,7 +56,7 @@ describe('crowdfund', () => {
     const owner = provider.wallet as anchor.Wallet;
     const name = 'Donate Test';
     const description = 'A campaign to test donations.';
-    const targetAmount = new anchor.BN(5000);
+    const goal = new anchor.BN(5000);
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 86400); // 1 day from now
 
     // Derive PDA
@@ -69,7 +67,7 @@ describe('crowdfund', () => {
 
     // Create the campaign
     await program.methods
-      .createCampaign(name, description, targetAmount, deadline)
+      .createCampaign(name, description, goal, deadline)
       .accounts({
         owner: owner.publicKey,
       })
@@ -97,7 +95,7 @@ describe('crowdfund', () => {
     const owner = provider.wallet as anchor.Wallet;
     const name = 'Fail Campaign';
     const description = 'A campaign that will fail.';
-    const targetAmount = new anchor.BN(1_000_000_000); // 1 SOL (set high so it fails)
+    const goal = new anchor.BN(1_000_000_000); // 1 SOL (set high so it fails)
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 2); // 2 seconds from now
 
     // Derive PDA for campaign and contributor record
@@ -117,7 +115,7 @@ describe('crowdfund', () => {
 
     // Create the campaign
     await program.methods
-      .createCampaign(name, description, targetAmount, deadline)
+      .createCampaign(name, description, goal, deadline)
       .accounts({
         // campaign: campaignPda,
         owner: owner.publicKey,
@@ -163,6 +161,61 @@ describe('crowdfund', () => {
     );
     expect(record.withdrawn).to.be.true;
     // The difference should be at least the donation (minus rent/fees)
+    expect(after).to.be.greaterThan(before);
+  });
+
+  it('Allows owner to withdraw if campaign succeeded', async () => {
+    const provider = anchor.AnchorProvider.env();
+    const owner = provider.wallet as anchor.Wallet;
+    const name = 'Success Campaign';
+    const description = 'A campaign that will succeed.';
+    const goal = new anchor.BN(1_000_000); // 0.001 SOL
+    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 2); // 2 seconds from now
+
+    // Derive PDA for campaign
+    const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
+      program.programId
+    );
+
+    // Create the campaign
+    await program.methods
+      .createCampaign(name, description, goal, deadline)
+      .accounts({
+        owner: owner.publicKey,
+      })
+      .rpc();
+
+    // Donate to the campaign (meet the goal)
+    await program.methods
+      .donateToCampaign(goal)
+      .accounts({
+        campaign: campaignPda,
+        contributor: owner.publicKey,
+      })
+      .rpc();
+
+    // Wait for deadline to pass
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Get balances before withdrawal
+    const before = await provider.connection.getBalance(owner.publicKey);
+
+    // Withdraw by owner
+    await program.methods
+      .withdrawByOwner()
+      .accounts({
+        campaign: campaignPda,
+      })
+      .rpc();
+
+    // Get balances after withdrawal
+    const after = await provider.connection.getBalance(owner.publicKey);
+
+    // Fetch campaign account
+    const campaignAccount = await program.account.campaign.fetch(campaignPda);
+    expect(campaignAccount.withdrawnByOwner).to.be.true;
+    // The difference should be at least the goal (minus rent/fees)
     expect(after).to.be.greaterThan(before);
   });
 });
