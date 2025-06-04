@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program::{self, Transfer};
 
 declare_id!("BHxtP7TuM13v1PBSoDN8gWap7acf4bnVQjxNFEs9ipbR");
 
@@ -25,6 +26,33 @@ pub mod crowdfund {
         campaign.target_amount = target_amount;
         campaign.deadline = deadline;
         campaign.total_amount_donated = 0;
+        Ok(())
+    }
+
+    pub fn donate_to_campaign(
+        ctx: Context<DonateToCampaign>,
+        amount: u64,
+    ) -> Result<()> {
+        let clock = Clock::get()?;
+        // Check deadline
+        if let Some(deadline) = ctx.accounts.campaign.deadline {
+            require!(clock.unix_timestamp < deadline, CustomError::CampaignEnded);
+        }
+        // Transfer lamports from contributor to campaign
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.contributor.to_account_info(),
+                to: ctx.accounts.campaign.to_account_info(),
+            },
+        );
+        system_program::transfer(cpi_ctx, amount)?;
+        // Now take mutable borrow and update state
+        let campaign = &mut ctx.accounts.campaign;
+        campaign.total_amount_donated = campaign
+            .total_amount_donated
+            .checked_add(amount)
+            .ok_or(CustomError::Overflow)?;
         Ok(())
     }
 }
@@ -59,4 +87,21 @@ pub struct CreateCampaign<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct DonateToCampaign<'info> {
+    #[account(mut)]
+    pub campaign: Account<'info, Campaign>,
+    #[account(mut)]
+    pub contributor: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[error_code]
+pub enum CustomError {
+    #[msg("The campaign has ended.")]
+    CampaignEnded,
+    #[msg("Overflow in donation amount.")]
+    Overflow,
 }
