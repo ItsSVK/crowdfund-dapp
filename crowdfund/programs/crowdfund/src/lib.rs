@@ -53,6 +53,43 @@ pub mod crowdfund {
             .total_amount_donated
             .checked_add(amount)
             .ok_or(CustomError::Overflow)?;
+        // Update or initialize contributor record
+        let contributor_record = &mut ctx.accounts.contributor_record;
+        if contributor_record.amount_donated == 0 {
+            contributor_record.campaign = campaign.key();
+            contributor_record.contributor = ctx.accounts.contributor.key();
+        }
+        contributor_record.amount_donated = contributor_record
+            .amount_donated
+            .checked_add(amount)
+            .ok_or(CustomError::Overflow)?;
+        contributor_record.withdrawn = false;
+        Ok(())
+    }
+
+    pub fn withdraw_if_failed(ctx: Context<WithdrawIfFailed>) -> Result<()> {
+        let campaign = &ctx.accounts.campaign;
+        let contributor_record = &mut ctx.accounts.contributor_record;
+        let clock = Clock::get()?;
+        // Check deadline
+        require!(
+            campaign.deadline.is_some() && clock.unix_timestamp >= campaign.deadline.unwrap(),
+            CustomError::CampaignStillActive
+        );
+        // Check if goal was NOT reached
+        require!(
+            campaign.target_amount.is_some() && campaign.total_amount_donated < campaign.target_amount.unwrap(),
+            CustomError::CampaignGoalReached
+        );
+        // Check if already withdrawn
+        require!(!contributor_record.withdrawn, CustomError::AlreadyWithdrawn);
+        // Check if contributor has something to withdraw
+        require!(contributor_record.amount_donated > 0, CustomError::NothingToWithdraw);
+        // Transfer lamports from campaign to contributor
+        **ctx.accounts.campaign.to_account_info().try_borrow_mut_lamports()? -= contributor_record.amount_donated;
+        **ctx.accounts.contributor.to_account_info().try_borrow_mut_lamports()? += contributor_record.amount_donated;
+        // Mark as withdrawn
+        contributor_record.withdrawn = true;
         Ok(())
     }
 }
@@ -95,7 +132,38 @@ pub struct DonateToCampaign<'info> {
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub contributor: Signer<'info>,
+    #[account(
+        init_if_needed,
+        payer = contributor,
+        space = 8 + ContributorRecord::INIT_SPACE,
+        seeds = [b"contributor", campaign.key().as_ref(), contributor.key().as_ref()],
+        bump
+    )]
+    pub contributor_record: Account<'info, ContributorRecord>,
     pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct ContributorRecord {
+    pub campaign: Pubkey,
+    pub contributor: Pubkey,
+    pub amount_donated: u64,
+    pub withdrawn: bool,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawIfFailed<'info> {
+    #[account(mut)]
+    pub campaign: Account<'info, Campaign>,
+    #[account(mut, has_one = campaign, has_one = contributor)]
+    pub contributor_record: Account<'info, ContributorRecord>,
+    #[account(mut)]
+    pub contributor: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+impl ContributorRecord {
+    pub const INIT_SPACE: usize = 8 + 32 + 32 + 8 + 1;
 }
 
 #[error_code]
@@ -104,4 +172,12 @@ pub enum CustomError {
     CampaignEnded,
     #[msg("Overflow in donation amount.")]
     Overflow,
+    #[msg("The campaign is still active.")]
+    CampaignStillActive,
+    #[msg("The campaign goal was reached.")]
+    CampaignGoalReached,
+    #[msg("Already withdrawn.")]
+    AlreadyWithdrawn,
+    #[msg("Nothing to withdraw.")]
+    NothingToWithdraw,
 }
