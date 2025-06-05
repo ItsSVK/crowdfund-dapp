@@ -20,12 +20,15 @@ pub mod crowdfund {
         deadline: Option<i64>,
     ) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
+        let treasury = ctx.accounts.treasury.key();
         campaign.name = name;
         campaign.description = description;
         campaign.owner = *ctx.accounts.owner.key;
         campaign.goal = goal;
         campaign.deadline = deadline;
         campaign.total_amount_donated = 0;
+        campaign.treasury = treasury;
+        campaign.withdrawn_by_owner = false;
         Ok(())
     }
 
@@ -38,12 +41,12 @@ pub mod crowdfund {
         if let Some(deadline) = ctx.accounts.campaign.deadline {
             require!(clock.unix_timestamp < deadline, CustomError::CampaignEnded);
         }
-        // Transfer lamports from contributor to campaign
+        // Transfer lamports from contributor to treasury
         let cpi_ctx = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.contributor.to_account_info(),
-                to: ctx.accounts.campaign.to_account_info(),
+                to: ctx.accounts.treasury.to_account_info(),
             },
         );
         system_program::transfer(cpi_ctx, amount)?;
@@ -85,8 +88,8 @@ pub mod crowdfund {
         require!(!contributor_record.withdrawn, CustomError::AlreadyWithdrawn);
         // Check if contributor has something to withdraw
         require!(contributor_record.amount_donated > 0, CustomError::NothingToWithdraw);
-        // Transfer lamports from campaign to contributor
-        **ctx.accounts.campaign.to_account_info().try_borrow_mut_lamports()? -= contributor_record.amount_donated;
+        // Transfer lamports from treasury to contributor
+        **ctx.accounts.treasury.try_borrow_mut_lamports()? -= contributor_record.amount_donated;
         **ctx.accounts.contributor.to_account_info().try_borrow_mut_lamports()? += contributor_record.amount_donated;
         // Mark as withdrawn
         contributor_record.withdrawn = true;
@@ -108,9 +111,9 @@ pub mod crowdfund {
         );
         // Check if already withdrawn
         require!(!campaign.withdrawn_by_owner, CustomError::AlreadyWithdrawnByOwner);
-        // Transfer lamports from campaign to owner
+        // Transfer lamports from treasury to owner
         let amount = campaign.total_amount_donated;
-        **campaign.to_account_info().try_borrow_mut_lamports()? -= amount;
+        **ctx.accounts.treasury.try_borrow_mut_lamports()? -= amount;
         **ctx.accounts.owner.try_borrow_mut_lamports()? += amount;
         // Mark as withdrawn
         campaign.withdrawn_by_owner = true;
@@ -133,6 +136,7 @@ pub struct Campaign {
     pub deadline: Option<i64>,
     pub total_amount_donated: u64,
     pub withdrawn_by_owner: bool,
+    pub treasury: Pubkey,
 }
 
 #[derive(Accounts)]
@@ -148,6 +152,15 @@ pub struct CreateCampaign<'info> {
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    #[account(
+        init,
+        payer = owner,
+        space = 8,
+        seeds = [b"treasury", campaign.key().as_ref()],
+        bump
+    )]
+    /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
+    pub treasury: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -165,6 +178,9 @@ pub struct DonateToCampaign<'info> {
         bump
     )]
     pub contributor_record: Account<'info, ContributorRecord>,
+    #[account(mut)]
+    /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
+    pub treasury: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -184,6 +200,9 @@ pub struct WithdrawIfFailed<'info> {
     pub contributor_record: Account<'info, ContributorRecord>,
     #[account(mut)]
     pub contributor: Signer<'info>,
+    #[account(mut)]
+    /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
+    pub treasury: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -193,6 +212,9 @@ pub struct WithdrawByOwner<'info> {
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    #[account(mut)]
+    /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
+    pub treasury: AccountInfo<'info>,
 }
 
 impl ContributorRecord {

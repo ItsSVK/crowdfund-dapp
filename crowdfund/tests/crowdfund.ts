@@ -29,13 +29,15 @@ describe('crowdfund', () => {
       program.programId
     );
 
+    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      program.programId
+    );
+
     await program.methods
       .createCampaign(name, description, goal, deadline)
       .accounts({
         owner: owner.publicKey,
-        // campaign: campaignPda,
-        // owner: owner.publicKey,
-        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
@@ -65,6 +67,11 @@ describe('crowdfund', () => {
       program.programId
     );
 
+    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      program.programId
+    );
+
     // Create the campaign
     await program.methods
       .createCampaign(name, description, goal, deadline)
@@ -80,6 +87,7 @@ describe('crowdfund', () => {
       .accounts({
         campaign: campaignPda,
         contributor: owner.publicKey,
+        treasury: treasuryPda,
         // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
@@ -103,6 +111,10 @@ describe('crowdfund', () => {
       [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
       program.programId
     );
+    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      program.programId
+    );
     const [contributorRecordPda] =
       await anchor.web3.PublicKey.findProgramAddress(
         [
@@ -117,9 +129,7 @@ describe('crowdfund', () => {
     await program.methods
       .createCampaign(name, description, goal, deadline)
       .accounts({
-        // campaign: campaignPda,
         owner: owner.publicKey,
-        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
@@ -130,8 +140,7 @@ describe('crowdfund', () => {
       .accounts({
         campaign: campaignPda,
         contributor: owner.publicKey,
-        // contributorRecord: contributorRecordPda,
-        // systemProgram: anchor.web3.SystemProgram.programId,
+        treasury: treasuryPda,
       })
       .rpc();
 
@@ -146,9 +155,7 @@ describe('crowdfund', () => {
       .withdrawIfFailed()
       .accounts({
         contributorRecord: contributorRecordPda,
-        // campaign: campaignPda,
-        // contributor: owner.publicKey,
-        // systemProgram: anchor.web3.SystemProgram.programId,
+        treasury: treasuryPda,
       })
       .rpc();
 
@@ -178,6 +185,11 @@ describe('crowdfund', () => {
       program.programId
     );
 
+    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      program.programId
+    );
+
     // Create the campaign
     await program.methods
       .createCampaign(name, description, goal, deadline)
@@ -192,6 +204,7 @@ describe('crowdfund', () => {
       .accounts({
         campaign: campaignPda,
         contributor: owner.publicKey,
+        treasury: treasuryPda,
       })
       .rpc();
 
@@ -206,6 +219,7 @@ describe('crowdfund', () => {
       .withdrawByOwner()
       .accounts({
         campaign: campaignPda,
+        treasury: treasuryPda,
       })
       .rpc();
 
