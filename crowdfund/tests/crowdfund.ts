@@ -21,21 +21,22 @@ describe('crowdfund', () => {
     const name = 'Test Campaign';
     const description = 'A test campaign for unit testing.';
     const goal = new anchor.BN(1000);
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 86400); // 1 day from now
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 86400); // 1 day from now
+    const createdAt = new anchor.BN(now);
 
-    // Derive PDA
+    // Derive campaign PDA
     const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
-      program.programId
-    );
-
-    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      [
+        Buffer.from('campaign'),
+        owner.publicKey.toBuffer(),
+        createdAt.toArrayLike(Buffer, 'le', 8),
+      ],
       program.programId
     );
 
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(name, description, goal, deadline, createdAt)
       .accounts({
         owner: owner.publicKey,
       })
@@ -59,11 +60,17 @@ describe('crowdfund', () => {
     const name = 'Donate Test';
     const description = 'A campaign to test donations.';
     const goal = new anchor.BN(5000);
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 86400); // 1 day from now
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 86400); // 1 day from now
+    const createdAt = new anchor.BN(now);
 
-    // Derive PDA
+    // Derive campaign PDA
     const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
+      [
+        Buffer.from('campaign'),
+        owner.publicKey.toBuffer(),
+        createdAt.toArrayLike(Buffer, 'le', 8),
+      ],
       program.programId
     );
 
@@ -74,7 +81,7 @@ describe('crowdfund', () => {
 
     // Create the campaign
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(name, description, goal, deadline, createdAt)
       .accounts({
         owner: owner.publicKey,
       })
@@ -88,7 +95,6 @@ describe('crowdfund', () => {
         campaign: campaignPda,
         contributor: owner.publicKey,
         treasury: treasuryPda,
-        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
@@ -104,13 +110,21 @@ describe('crowdfund', () => {
     const name = 'Fail Campaign';
     const description = 'A campaign that will fail.';
     const goal = new anchor.BN(1_000_000_000); // 1 SOL (set high so it fails)
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 2); // 2 seconds from now
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2); // 2 seconds from now
+    const createdAt = new anchor.BN(now);
 
-    // Derive PDA for campaign and contributor record
+    // Derive campaign PDA
     const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
+      [
+        Buffer.from('campaign'),
+        owner.publicKey.toBuffer(),
+        createdAt.toArrayLike(Buffer, 'le', 8),
+      ],
       program.programId
     );
+
+    // Derive treasury PDA
     const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from('treasury'), campaignPda.toBuffer()],
       program.programId
@@ -127,7 +141,7 @@ describe('crowdfund', () => {
 
     // Create the campaign
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(name, description, goal, deadline, createdAt)
       .accounts({
         owner: owner.publicKey,
       })
@@ -177,11 +191,17 @@ describe('crowdfund', () => {
     const name = 'Success Campaign';
     const description = 'A campaign that will succeed.';
     const goal = new anchor.BN(1_000_000); // 0.001 SOL
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 2); // 2 seconds from now
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2); // 2 seconds from now
+    const createdAt = new anchor.BN(now);
 
-    // Derive PDA for campaign
+    // Derive campaign PDA
     const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
+      [
+        Buffer.from('campaign'),
+        owner.publicKey.toBuffer(),
+        createdAt.toArrayLike(Buffer, 'le', 8),
+      ],
       program.programId
     );
 
@@ -192,7 +212,7 @@ describe('crowdfund', () => {
 
     // Create the campaign
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(name, description, goal, deadline, createdAt)
       .accounts({
         owner: owner.publicKey,
       })
@@ -231,5 +251,51 @@ describe('crowdfund', () => {
     expect(campaignAccount.withdrawnByOwner).to.be.true;
     // The difference should be at least the goal (minus rent/fees)
     expect(after).to.be.greaterThan(before);
+  });
+
+  it('Allows owner to cancel a campaign', async () => {
+    const provider = anchor.AnchorProvider.env();
+    const owner = provider.wallet as anchor.Wallet;
+    const name = 'Cancel Campaign';
+    const description = 'A campaign that will be cancelled.';
+    const goal = new anchor.BN(1_000_000); // 0.001 SOL
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2); // 2 seconds from now
+    const createdAt = new anchor.BN(now);
+
+    // Derive campaign PDA
+    const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from('campaign'),
+        owner.publicKey.toBuffer(),
+        createdAt.toArrayLike(Buffer, 'le', 8),
+      ],
+      program.programId
+    );
+
+    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
+      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      program.programId
+    );
+
+    // Create the campaign
+    await program.methods
+      .createCampaign(name, description, goal, deadline, createdAt)
+      .accounts({
+        owner: owner.publicKey,
+      })
+      .rpc();
+
+    // Cancel the campaign
+    await program.methods
+      .cancelCampaign()
+      .accounts({
+        campaign: campaignPda,
+      })
+      .rpc();
+
+    // Fetch campaign account
+    const campaignAccount = await program.account.campaign.fetch(campaignPda);
+    expect(campaignAccount.isCancelled).to.be.true;
   });
 });

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer};
 
-declare_id!("BHxtP7TuM13v1PBSoDN8gWap7acf4bnVQjxNFEs9ipbR");
+declare_id!("CyAAhAthb87MH3MQzcj8gAWTTaTkQ6cqboTYauMjuxch");
 
 #[program]
 pub mod crowdfund {
@@ -18,6 +18,7 @@ pub mod crowdfund {
         description: String,
         goal: u64,
         deadline: Option<i64>,
+        created_at: i64,
     ) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
         let treasury = ctx.accounts.treasury.key();
@@ -29,6 +30,8 @@ pub mod crowdfund {
         campaign.total_amount_donated = 0;
         campaign.treasury = treasury;
         campaign.withdrawn_by_owner = false;
+        campaign.created_at = created_at;
+        campaign.is_cancelled = false;
         Ok(())
     }
 
@@ -119,6 +122,15 @@ pub mod crowdfund {
         campaign.withdrawn_by_owner = true;
         Ok(())
     }
+
+    pub fn cancel_campaign(ctx: Context<CancelCampaign>) -> Result<()> {
+        let clock = Clock::get()?;
+        require!(clock.unix_timestamp < ctx.accounts.campaign.deadline.unwrap(), CustomError::CampaignEnded);
+
+        let campaign = &mut ctx.accounts.campaign;
+        campaign.is_cancelled = true;
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -127,9 +139,9 @@ pub struct Initialize {}
 #[account]
 #[derive(InitSpace)]
 pub struct Campaign {
-    #[max_len(32)]
+    #[max_len(50)]
     pub name: String,
-    #[max_len(256)]
+    #[max_len(500)]
     pub description: String,
     pub owner: Pubkey,
     pub goal: u64,
@@ -137,16 +149,18 @@ pub struct Campaign {
     pub total_amount_donated: u64,
     pub withdrawn_by_owner: bool,
     pub treasury: Pubkey,
+    pub created_at: i64,
+    pub is_cancelled: bool,
 }
 
 #[derive(Accounts)]
-#[instruction(name: String)]
+#[instruction(name: String, description: String, goal: u64, deadline: Option<i64>, created_at: i64)]
 pub struct CreateCampaign<'info> {
     #[account(
         init,
         payer = owner,
         space = 8 + Campaign::INIT_SPACE,
-        seeds = [b"campaign", owner.key().as_ref(), name.as_bytes()],
+        seeds = [b"campaign", owner.key().as_ref(), &created_at.to_le_bytes()],
         bump
     )]
     pub campaign: Account<'info, Campaign>,
@@ -166,7 +180,10 @@ pub struct CreateCampaign<'info> {
 
 #[derive(Accounts)]
 pub struct DonateToCampaign<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled
+    )]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub contributor: Signer<'info>,
@@ -194,7 +211,7 @@ pub struct ContributorRecord {
 
 #[derive(Accounts)]
 pub struct WithdrawIfFailed<'info> {
-    #[account(mut)]
+    #[account(mut, constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut, has_one = campaign, has_one = contributor)]
     pub contributor_record: Account<'info, ContributorRecord>,
@@ -208,13 +225,21 @@ pub struct WithdrawIfFailed<'info> {
 
 #[derive(Accounts)]
 pub struct WithdrawByOwner<'info> {
-    #[account(mut, has_one = owner)]
+    #[account(mut, has_one = owner, constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub owner: Signer<'info>,
     #[account(mut)]
     /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
     pub treasury: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelCampaign<'info> {
+    #[account(mut, has_one = owner, constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled)]
+    pub campaign: Account<'info, Campaign>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
 }
 
 impl ContributorRecord {
@@ -239,4 +264,6 @@ pub enum CustomError {
     CampaignGoalNotReached,
     #[msg("Owner has already withdrawn.")]
     AlreadyWithdrawnByOwner,
+    #[msg("The campaign is cancelled.")]
+    CampaignCancelled,
 }

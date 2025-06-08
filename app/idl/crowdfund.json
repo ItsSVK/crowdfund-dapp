@@ -1,0 +1,415 @@
+{
+  "address": "CyAAhAthb87MH3MQzcj8gAWTTaTkQ6cqboTYauMjuxch",
+  "metadata": {
+    "name": "crowdfund",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "create_campaign",
+      "discriminator": [
+        111,
+        131,
+        187,
+        98,
+        160,
+        193,
+        114,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "created_at"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "goal",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": {
+            "option": "i64"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "donate_to_campaign",
+      "discriminator": [
+        11,
+        213,
+        34,
+        2,
+        196,
+        121,
+        15,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "contributor_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "contributor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "withdraw_by_owner",
+      "discriminator": [
+        166,
+        40,
+        245,
+        215,
+        194,
+        84,
+        74,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "campaign"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_if_failed",
+      "discriminator": [
+        222,
+        183,
+        165,
+        184,
+        213,
+        206,
+        186,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true,
+          "relations": [
+            "contributor_record"
+          ]
+        },
+        {
+          "name": "contributor_record",
+          "writable": true
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "contributor_record"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Campaign",
+      "discriminator": [
+        50,
+        40,
+        49,
+        11,
+        157,
+        220,
+        229,
+        192
+      ]
+    },
+    {
+      "name": "ContributorRecord",
+      "discriminator": [
+        205,
+        80,
+        134,
+        228,
+        85,
+        135,
+        197,
+        176
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "CampaignEnded",
+      "msg": "The campaign has ended."
+    },
+    {
+      "code": 6001,
+      "name": "Overflow",
+      "msg": "Overflow in donation amount."
+    },
+    {
+      "code": 6002,
+      "name": "CampaignStillActive",
+      "msg": "The campaign is still active."
+    },
+    {
+      "code": 6003,
+      "name": "CampaignGoalReached",
+      "msg": "The campaign goal was reached."
+    },
+    {
+      "code": 6004,
+      "name": "AlreadyWithdrawn",
+      "msg": "Already withdrawn."
+    },
+    {
+      "code": 6005,
+      "name": "NothingToWithdraw",
+      "msg": "Nothing to withdraw."
+    },
+    {
+      "code": 6006,
+      "name": "CampaignGoalNotReached",
+      "msg": "The campaign goal was not reached."
+    },
+    {
+      "code": 6007,
+      "name": "AlreadyWithdrawnByOwner",
+      "msg": "Owner has already withdrawn."
+    }
+  ],
+  "types": [
+    {
+      "name": "Campaign",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "goal",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "total_amount_donated",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn_by_owner",
+            "type": "bool"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContributorRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "contributor",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_donated",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ]
+}

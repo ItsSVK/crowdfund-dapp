@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
+import Navbar from '@/components/pages/navbar';
 
 const features = [
   {
@@ -86,7 +87,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <>
       {/* Animated Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-blue-500/5 to-cyan-500/5" />
@@ -98,59 +99,14 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-50 border-b bg-background/80 backdrop-blur-md"
-      >
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                SolFund
-              </h1>
-            </motion.div>
-
-            <nav className="hidden md:flex items-center space-x-8">
-              {['Features', 'How it Works', 'Stats'].map((item, index) => (
-                <motion.a
-                  key={item}
-                  href={`#${item.toLowerCase().replace(' ', '-')}`}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -2 }}
-                >
-                  {item}
-                </motion.a>
-              ))}
-            </nav>
-
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <Link href="/">
-                <Button className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700">
-                  Launch App
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </motion.header>
-
       {/* Hero Section */}
       <section className="relative pt-20 pb-32">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false }}
               transition={{ duration: 0.8 }}
             >
               <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm">
@@ -175,7 +131,8 @@ export default function LandingPage() {
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false }}
               transition={{ delay: 0.3, duration: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
@@ -201,7 +158,8 @@ export default function LandingPage() {
             {/* Stats Preview */}
             <motion.div
               initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false }}
               transition={{ delay: 0.6, duration: 0.8 }}
               className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20"
             >
@@ -228,7 +186,7 @@ export default function LandingPage() {
         {/* Floating Elements */}
         <motion.div
           className="absolute top-20 left-10 w-20 h-20 rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-xl"
-          animate={{
+          whileInView={{
             y: [0, -20, 0],
             x: [0, 10, 0],
           }}
@@ -240,7 +198,7 @@ export default function LandingPage() {
         />
         <motion.div
           className="absolute top-40 right-20 w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 blur-xl"
-          animate={{
+          whileInView={{
             y: [0, 30, 0],
             x: [0, -15, 0],
           }}
@@ -258,13 +216,13 @@ export default function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: false }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
               Why Choose{' '}
               <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                SolFund
+                CrowdSOL
               </span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -279,7 +237,7 @@ export default function LandingPage() {
                 key={feature.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: false }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -5 }}
               >
@@ -311,7 +269,7 @@ export default function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: false }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
@@ -332,7 +290,7 @@ export default function LandingPage() {
                 key={step.step}
                 initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: false }}
                 transition={{ delay: index * 0.2 }}
                 className={`flex items-center gap-8 mb-16 ${
                   index % 2 === 1 ? 'flex-row-reverse' : ''
@@ -379,7 +337,7 @@ export default function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: false }}
             className="text-center max-w-3xl mx-auto"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
@@ -390,11 +348,11 @@ export default function LandingPage() {
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
               Join thousands of creators and backers who are already building
-              the future with SolFund
+              the future with CrowdSOL
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/">
+              <Link href="/app">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -413,7 +371,7 @@ export default function LandingPage() {
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ delay: 0.3 }}
               className="flex items-center justify-center gap-4 mt-8 text-sm text-muted-foreground"
             >
@@ -441,26 +399,26 @@ export default function LandingPage() {
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               className="flex items-center space-x-2 mb-4 md:mb-0"
             >
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600" />
               <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                SolFund
+                CrowdSOL
               </span>
             </motion.div>
 
             <motion.p
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               className="text-muted-foreground text-center md:text-right"
             >
-              © 2024 SolFund. Empowering creators with blockchain technology.
+              © 2024 CrowdSOL. Empowering creators with blockchain technology.
             </motion.p>
           </div>
         </div>
       </footer>
-    </div>
+    </>
   );
 }
