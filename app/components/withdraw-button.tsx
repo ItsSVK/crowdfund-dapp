@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { errorMessages } from '@/lib/errorMessages';
+import * as anchor from '@coral-xyz/anchor';
 
 interface WithdrawButtonProps {
   campaignId: string;
@@ -24,9 +26,20 @@ export function WithdrawButton({ campaignId }: WithdrawButtonProps) {
         description: 'Your contribution has been returned to your wallet.',
       });
     } catch (error) {
-      toast.error('Withdrawal Failed', {
-        description: 'Please try again or check your wallet connection.',
-      });
+      console.error('Full error:', error);
+
+      if (error instanceof anchor.AnchorError) {
+        console.error('Anchor error:', error);
+        toast.error(
+          errorMessages[
+            error.error.errorCode.code as keyof typeof errorMessages
+          ]
+        );
+      }
+
+      if (error instanceof Error && 'transactionLogs' in error) {
+        console.error('Transaction logs:', error.transactionLogs);
+      }
     } finally {
       setIsLoading(false);
     }

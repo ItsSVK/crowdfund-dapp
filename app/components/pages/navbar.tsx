@@ -7,6 +7,7 @@ import { CustomWalletButton } from './CustomWalletButton';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Logo } from '@/components/logo';
 
 export default function Navbar() {
   const router = useRouter();
@@ -24,18 +25,22 @@ export default function Navbar() {
             whileHover={{ scale: 1.05 }}
             className="flex items-center space-x-2 cursor-pointer"
           >
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600" />
-            <h1
+            <Logo
+              className="h-8 w-8"
+              showText={true}
+              onClick={() => router.push('/')}
+            />
+            {/* <h1
               className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent"
               onClick={() => router.push('/')}
             >
               CrowdSOL
-            </h1>
+            </h1> */}
           </motion.div>
 
           {pathname === '/' && (
             <nav className="hidden md:flex items-center space-x-8">
-              {['Features', 'How it Works', 'Stats'].map((item, index) => (
+              {['Features', 'How it Works'].map((item, index) => (
                 <motion.a
                   key={item}
                   href={`#${item.toLowerCase().replace(' ', '-')}`}

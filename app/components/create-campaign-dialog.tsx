@@ -5,6 +5,7 @@ import type React from 'react';
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, FileText, Target } from 'lucide-react';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,8 @@ import { useAnchorProgram } from '@/hooks/useAnchorProgram';
 import * as anchor from '@coral-xyz/anchor';
 import { SystemProgram } from '@solana/web3.js';
 import { z } from 'zod';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { errorMessages } from '@/lib/errorMessages';
 
 interface CreateCampaignDialogProps {
   open: boolean;
@@ -47,7 +50,7 @@ const campaignSchema = z.object({
         const d = new Date(val);
         return d.toString() !== 'Invalid Date' && d > new Date();
       },
-      { message: 'Deadline must be a valid future date' }
+      { message: 'Deadline must be a valid future date and time' }
     ),
 });
 
@@ -62,6 +65,7 @@ export function CreateCampaignDialog({
     goal: '',
     deadline: '',
   });
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [formErrors, setFormErrors] = useState<
     Partial<Record<keyof typeof formData, string>>
   >({});
@@ -82,10 +86,27 @@ export function CreateCampaignDialog({
     return true;
   };
 
+  const validateField = (field: keyof typeof formData, value: string) => {
+    const testData = { ...formData, [field]: value };
+    const result = campaignSchema.safeParse(testData);
+
+    if (!result.success) {
+      const fieldError = result.error.errors.find(err => err.path[0] === field);
+      if (fieldError) {
+        setFormErrors(prev => ({ ...prev, [field]: fieldError.message }));
+      }
+    } else {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
-      validate(updated);
       if (field === 'description' && descriptionRef.current) {
         descriptionRef.current.style.height = 'auto';
         descriptionRef.current.style.height =
@@ -95,12 +116,25 @@ export function CreateCampaignDialog({
     });
   };
 
-  const { program, provider } = useAnchorProgram();
+  const handleInputBlur = (field: keyof typeof formData) => {
+    validateField(field, formData[field]);
+  };
 
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
+    const dateString = date ? date.toISOString() : '';
+    setFormData(prev => ({ ...prev, deadline: dateString }));
+    // Validate immediately for date picker since it doesn't have traditional blur
+    if (date) {
+      validateField('deadline', dateString);
+    }
+  };
+
+  const { program, provider } = useAnchorProgram();
+  const { refreshCampaigns } = useCampaigns();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(formData)) return;
-    console.log('formData', formData);
     setIsLoading(true);
 
     try {
@@ -154,15 +188,24 @@ export function CreateCampaignDialog({
           'Your campaign has been successfully created and is now live.',
       });
       onOpenChange(false);
-      // setFormData({ name: '', description: '', goal: '', deadline: '' });
-    } catch (error: any) {
+      setFormData({ name: '', description: '', goal: '', deadline: '' });
+      setSelectedDate(null);
+      refreshCampaigns();
+    } catch (error) {
       console.error('Full error:', error);
-      if (error.transactionLogs) {
+
+      if (error instanceof anchor.AnchorError) {
+        console.error('Anchor error:', error);
+        toast.error(
+          errorMessages[
+            error.error.errorCode.code as keyof typeof errorMessages
+          ]
+        );
+      }
+
+      if (error instanceof Error && 'transactionLogs' in error) {
         console.error('Transaction logs:', error.transactionLogs);
       }
-      toast.error('Failed to create campaign.', {
-        description: 'Please try again.',
-      });
     } finally {
       setIsLoading(false);
     }
@@ -199,6 +242,7 @@ export function CreateCampaignDialog({
                 placeholder="Enter campaign name"
                 value={formData.name}
                 onChange={e => handleInputChange('name', e.target.value)}
+                onBlur={() => handleInputBlur('name')}
                 className="transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
               />
               {formErrors.name && (
@@ -218,6 +262,7 @@ export function CreateCampaignDialog({
                 placeholder="Describe your campaign and what you're raising funds for"
                 value={formData.description}
                 onChange={e => handleInputChange('description', e.target.value)}
+                onBlur={() => handleInputBlur('description')}
                 rows={1}
                 ref={descriptionRef}
                 className="transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
@@ -229,8 +274,8 @@ export function CreateCampaignDialog({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="flex gap-4">
+              <div className="space-y-2 flex-1/4">
                 <Label htmlFor="goal" className="flex items-center gap-2">
                   <Target className="h-4 w-4" />
                   Goal (SOL)
@@ -243,6 +288,7 @@ export function CreateCampaignDialog({
                   placeholder="10.0"
                   value={formData.goal}
                   onChange={e => handleInputChange('goal', e.target.value)}
+                  onBlur={() => handleInputBlur('goal')}
                   className="transition-all duration-200 focus:ring-2 focus:ring-purple-500/20 no-spinner"
                 />
                 {formErrors.goal && (
@@ -252,18 +298,17 @@ export function CreateCampaignDialog({
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 flex-3/4">
                 <Label htmlFor="deadline" className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   Deadline
                 </Label>
-                <Input
-                  id="deadline"
-                  type="date"
-                  value={formData.deadline}
-                  onChange={e => handleInputChange('deadline', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
+                <DateTimePicker
+                  value={selectedDate}
+                  onChange={handleDateChange}
+                  placeholder="Select campaign deadline"
+                  minDate={new Date(Date.now() + 60000)}
+                  className="transition-all duration-200 focus-within:ring-purple-500/20"
                 />
                 {formErrors.deadline && (
                   <div className="text-xs text-red-500 mt-1">
@@ -297,7 +342,7 @@ export function CreateCampaignDialog({
                       exit={{ opacity: 0 }}
                       className="flex items-center gap-2"
                     >
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent text-white" />
                       Creating...
                     </motion.div>
                   ) : (
@@ -306,6 +351,7 @@ export function CreateCampaignDialog({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
+                      className="text-white"
                     >
                       Create Campaign
                     </motion.span>

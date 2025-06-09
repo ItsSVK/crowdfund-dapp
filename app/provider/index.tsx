@@ -12,7 +12,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         {children}
-        <Toaster />
+        <Toaster position="top-right" richColors />
       </ThemeProvider>
     </WalletContextProvider>
   );

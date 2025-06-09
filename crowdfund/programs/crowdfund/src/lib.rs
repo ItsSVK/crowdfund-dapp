@@ -40,6 +40,8 @@ pub mod crowdfund {
         amount: u64,
     ) -> Result<()> {
         let clock = Clock::get()?;
+        // Check if campaign is cancelled
+        require!(!ctx.accounts.campaign.is_cancelled, CustomError::CampaignCancelled);
         // Check deadline
         if let Some(deadline) = ctx.accounts.campaign.deadline {
             require!(clock.unix_timestamp < deadline, CustomError::CampaignEnded);
@@ -77,23 +79,54 @@ pub mod crowdfund {
         let campaign = &ctx.accounts.campaign;
         let contributor_record = &mut ctx.accounts.contributor_record;
         let clock = Clock::get()?;
-        // Check deadline
+        
+        // Check if campaign is cancelled - failed campaigns should not be cancelled
+        require!(!campaign.is_cancelled, CustomError::CampaignCancelled);
+        
+        // Check deadline has passed
         require!(
             campaign.deadline.is_some() && clock.unix_timestamp >= campaign.deadline.unwrap(),
             CustomError::CampaignStillActive
         );
-        // Check if goal was NOT reached
+        
+        // Check if goal was NOT reached (campaign failed)
         require!(
             campaign.total_amount_donated < campaign.goal,
             CustomError::CampaignGoalReached
         );
+        
         // Check if already withdrawn
         require!(!contributor_record.withdrawn, CustomError::AlreadyWithdrawn);
+        
         // Check if contributor has something to withdraw
         require!(contributor_record.amount_donated > 0, CustomError::NothingToWithdraw);
+        
         // Transfer lamports from treasury to contributor
         **ctx.accounts.treasury.try_borrow_mut_lamports()? -= contributor_record.amount_donated;
         **ctx.accounts.contributor.to_account_info().try_borrow_mut_lamports()? += contributor_record.amount_donated;
+        
+        // Mark as withdrawn
+        contributor_record.withdrawn = true;
+        Ok(())
+    }
+
+    pub fn withdraw_if_cancelled(ctx: Context<WithdrawIfCancelled>) -> Result<()> {
+        let campaign = &ctx.accounts.campaign;
+        let contributor_record = &mut ctx.accounts.contributor_record;
+        
+        // Check if campaign is cancelled
+        require!(campaign.is_cancelled, CustomError::CampaignNotCancelled);
+        
+        // Check if already withdrawn
+        require!(!contributor_record.withdrawn, CustomError::AlreadyWithdrawn);
+        
+        // Check if contributor has something to withdraw
+        require!(contributor_record.amount_donated > 0, CustomError::NothingToWithdraw);
+        
+        // Transfer lamports from treasury to contributor
+        **ctx.accounts.treasury.try_borrow_mut_lamports()? -= contributor_record.amount_donated;
+        **ctx.accounts.contributor.to_account_info().try_borrow_mut_lamports()? += contributor_record.amount_donated;
+        
         // Mark as withdrawn
         contributor_record.withdrawn = true;
         Ok(())
@@ -102,22 +135,30 @@ pub mod crowdfund {
     pub fn withdraw_by_owner(ctx: Context<WithdrawByOwner>) -> Result<()> {
         let campaign = &mut ctx.accounts.campaign;
         let clock = Clock::get()?;
-        // Check deadline
+        
+        // Check if campaign is cancelled - owner cannot withdraw from cancelled campaigns
+        require!(!campaign.is_cancelled, CustomError::CampaignCancelled);
+        
+        // Check deadline has passed
         require!(
             campaign.deadline.is_some() && clock.unix_timestamp >= campaign.deadline.unwrap(),
             CustomError::CampaignStillActive
         );
-        // Check if goal was reached
+        
+        // Check if goal was reached (campaign successful)
         require!(
             campaign.total_amount_donated >= campaign.goal,
             CustomError::CampaignGoalNotReached
         );
+        
         // Check if already withdrawn
         require!(!campaign.withdrawn_by_owner, CustomError::AlreadyWithdrawnByOwner);
-        // Transfer lamports from treasury to owner
+        
+        // Transfer all funds from treasury to owner
         let amount = campaign.total_amount_donated;
         **ctx.accounts.treasury.try_borrow_mut_lamports()? -= amount;
         **ctx.accounts.owner.try_borrow_mut_lamports()? += amount;
+        
         // Mark as withdrawn
         campaign.withdrawn_by_owner = true;
         Ok(())
@@ -125,9 +166,18 @@ pub mod crowdfund {
 
     pub fn cancel_campaign(ctx: Context<CancelCampaign>) -> Result<()> {
         let clock = Clock::get()?;
-        require!(clock.unix_timestamp < ctx.accounts.campaign.deadline.unwrap(), CustomError::CampaignEnded);
-
         let campaign = &mut ctx.accounts.campaign;
+        
+        // Check if campaign is already cancelled
+        require!(!campaign.is_cancelled, CustomError::CampaignAlreadyCancelled);
+        
+        // Check deadline hasn't passed yet (can only cancel before deadline)
+        require!(
+            campaign.deadline.is_some() && clock.unix_timestamp < campaign.deadline.unwrap(),
+            CustomError::CampaignEnded
+        );
+        
+        // Cancel the campaign
         campaign.is_cancelled = true;
         Ok(())
     }
@@ -180,10 +230,7 @@ pub struct CreateCampaign<'info> {
 
 #[derive(Accounts)]
 pub struct DonateToCampaign<'info> {
-    #[account(
-        mut,
-        constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled
-    )]
+    #[account(mut)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub contributor: Signer<'info>,
@@ -202,6 +249,7 @@ pub struct DonateToCampaign<'info> {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct ContributorRecord {
     pub campaign: Pubkey,
     pub contributor: Pubkey,
@@ -211,7 +259,7 @@ pub struct ContributorRecord {
 
 #[derive(Accounts)]
 pub struct WithdrawIfFailed<'info> {
-    #[account(mut, constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled)]
+    #[account(mut)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut, has_one = campaign, has_one = contributor)]
     pub contributor_record: Account<'info, ContributorRecord>,
@@ -220,12 +268,24 @@ pub struct WithdrawIfFailed<'info> {
     #[account(mut)]
     /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
     pub treasury: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawIfCancelled<'info> {
+    #[account(mut)]
+    pub campaign: Account<'info, Campaign>,
+    #[account(mut, has_one = campaign, has_one = contributor)]
+    pub contributor_record: Account<'info, ContributorRecord>,
+    #[account(mut)]
+    pub contributor: Signer<'info>,
+    #[account(mut)]
+    /// CHECK: Treasury is a system account PDA only used for holding lamports; no data is read or written
+    pub treasury: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct WithdrawByOwner<'info> {
-    #[account(mut, has_one = owner, constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled)]
+    #[account(mut, has_one = owner)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -236,14 +296,10 @@ pub struct WithdrawByOwner<'info> {
 
 #[derive(Accounts)]
 pub struct CancelCampaign<'info> {
-    #[account(mut, has_one = owner, constraint = !campaign.is_cancelled @ CustomError::CampaignCancelled)]
+    #[account(mut, has_one = owner)]
     pub campaign: Account<'info, Campaign>,
     #[account(mut)]
     pub owner: Signer<'info>,
-}
-
-impl ContributorRecord {
-    pub const INIT_SPACE: usize = 8 + 32 + 32 + 8 + 1;
 }
 
 #[error_code]
@@ -266,4 +322,8 @@ pub enum CustomError {
     AlreadyWithdrawnByOwner,
     #[msg("The campaign is cancelled.")]
     CampaignCancelled,
+    #[msg("The campaign is not cancelled.")]
+    CampaignNotCancelled,
+    #[msg("The campaign is already cancelled.")]
+    CampaignAlreadyCancelled,
 }

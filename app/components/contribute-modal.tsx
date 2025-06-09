@@ -18,6 +18,8 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import * as anchor from '@coral-xyz/anchor';
 import { Wallet, Target, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCampaigns } from '@/hooks/useCampaigns';
+import { errorMessages } from '@/lib/errorMessages';
 
 interface Campaign {
   publicKey: anchor.web3.PublicKey;
@@ -44,19 +46,18 @@ interface ContributeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   campaign: Campaign | null;
-  onContributeSuccess?: () => void;
 }
 
 export function ContributeModal({
   open,
   onOpenChange,
   campaign,
-  onContributeSuccess,
 }: ContributeModalProps) {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { program } = useAnchorProgram();
-  const { publicKey, sendTransaction } = useWallet();
+  const { publicKey } = useWallet();
+  const { refreshCampaigns } = useCampaigns();
 
   // Helper functions
   const formatSOL = (lamports: anchor.BN) => {
@@ -108,14 +109,22 @@ export function ContributeModal({
       toast.success(`Successfully contributed ${amount} SOL!`);
       setAmount('');
       onOpenChange(false);
-
-      // Call the success callback to refresh campaigns
-      if (onContributeSuccess) {
-        onContributeSuccess();
-      }
+      refreshCampaigns();
     } catch (error) {
-      console.error('Contribution failed:', error);
-      toast.error('Contribution failed. Please try again.');
+      console.error('Full error:', error);
+
+      if (error instanceof anchor.AnchorError) {
+        console.error('Anchor error:', error);
+        toast.error(
+          errorMessages[
+            error.error.errorCode.code as keyof typeof errorMessages
+          ]
+        );
+      }
+
+      if (error instanceof Error && 'transactionLogs' in error) {
+        console.error('Transaction logs:', error.transactionLogs);
+      }
     } finally {
       setIsLoading(false);
     }

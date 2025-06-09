@@ -77,7 +77,6 @@ export default function LandingPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
-
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -136,7 +135,7 @@ export default function LandingPage() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <Link href="/">
+              <Link href="/app">
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white px-8 py-4 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300"
@@ -146,13 +145,13 @@ export default function LandingPage() {
                 </Button>
               </Link>
 
-              <Button
+              {/* <Button
                 variant="outline"
                 size="lg"
                 className="px-8 py-4 text-lg font-medium border-2 hover:bg-muted/50"
               >
                 Watch Demo
-              </Button>
+              </Button> */}
             </motion.div>
 
             {/* Stats Preview */}

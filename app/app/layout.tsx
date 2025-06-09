@@ -7,13 +7,79 @@ import './globals.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import Provider from '@/provider';
 import Navbar from '@/components/pages/navbar';
+import { CampaignProvider } from '@/contexts/CampaignContext';
+import PWAInstaller from '@/components/pwa-installer';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'CrowdSOL - Decentralized Crowdfunding',
-  description: 'Fund innovative projects with the power of Solana blockchain',
-  generator: 'v0.dev',
+  title: 'CrowdFund Solana - Decentralized Crowdfunding',
+  description:
+    'Fund innovative projects with the power of Solana blockchain. Create campaigns, donate SOL, and support the next generation of ideas.',
+  generator: 'Next.js',
+  metadataBase: new URL('https://crowdsol.itssvk.dev'),
+  keywords: [
+    'crowdfunding',
+    'solana',
+    'blockchain',
+    'cryptocurrency',
+    'fundraising',
+    'web3',
+  ],
+  authors: [{ name: 'CrowdFund Team' }],
+  creator: 'CrowdFund Solana',
+  publisher: 'CrowdFund Solana',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  icons: {
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  manifest: '/site.webmanifest',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://crowdsol.itssvk.dev',
+    title: 'CrowdFund Solana - Decentralized Crowdfunding',
+    description:
+      'Fund innovative projects with the power of Solana blockchain. Create campaigns, donate SOL, and support the next generation of ideas.',
+    siteName: 'CrowdFund Solana',
+    images: [
+      {
+        url: '/logo.svg',
+        width: 1200,
+        height: 630,
+        alt: 'CrowdFund Solana Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CrowdFund Solana - Decentralized Crowdfunding',
+    description: 'Fund innovative projects with the power of Solana blockchain',
+    images: ['/logo.svg'],
+    creator: '@ShouvikMohanta',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: {
+    // Add your verification tokens here when you have them
+    // google: 'your-google-verification-token',
+    // yandex: 'your-yandex-verification-token',
+  },
 };
 
 export default function RootLayout({
@@ -23,12 +89,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <Provider>
-          <div className="min-h-screen bg-background">
-            <Navbar />
-            {children}
-          </div>
+          <CampaignProvider>
+            <div className="min-h-screen bg-background">
+              <Navbar />
+              {children}
+              <PWAInstaller />
+            </div>
+          </CampaignProvider>
         </Provider>
       </body>
     </html>
