@@ -10,18 +10,19 @@ import { CampaignCard } from './campaign-card';
 import { PaginationControls } from './pagination-controls';
 import { Campaign, CampaignStatus } from '@/types/campaign';
 import { useCampaigns } from '@/hooks/useCampaigns';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
+import { ActiveFilter, UserFilter } from '@/types/campaign';
 
 interface CampaignsListProps {
-  activeFilter: string;
-  userFilter: string | null;
+  activeFilter: ActiveFilter;
+  userFilter: UserFilter | null;
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
   onCreateCampaign: () => void;
   getCampaignStatus: (campaign: Campaign) => CampaignStatus;
 }
 
-export function CampaignsList({
+function CampaignsListComponent({
   activeFilter,
   userFilter,
   onContribute,
@@ -29,50 +30,59 @@ export function CampaignsList({
   onCreateCampaign,
   getCampaignStatus,
 }: CampaignsListProps) {
-  const { campaigns, loading, connected, publicKey } = useCampaigns();
+  const { campaigns, loading, connected, publicKey, deadlineTimestamp } =
+    useCampaigns();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
-  // Filter campaigns based on active filter and user filter
-  const filteredCampaigns = campaigns.filter(campaign => {
-    // First apply status filter using the new campaignStatus function
-    let passesStatusFilter = true;
-    if (activeFilter !== 'All') {
-      const status = campaign.account.campaignStatus();
-      passesStatusFilter = status.status === activeFilter;
-    }
 
-    // Then apply user filter
-    let passesUserFilter = true;
-    if (userFilter !== 'All Campaigns' && publicKey) {
-      const status = campaign.account.campaignStatus();
-
-      switch (userFilter) {
-        case 'My Campaigns':
-          passesUserFilter = status.amITheOwner;
-          break;
-        case 'My Contributions':
-          // Check if user has contributed using the campaignStatus logic
-          passesUserFilter = status.isContributed;
-          break;
-        case 'Claimable':
-          // Campaigns where user can claim (failed campaigns where user contributed)
-          passesUserFilter =
-            (status.isContributed && !status.isGoalReached) ||
-            (status.amITheOwner && status.isGoalReached);
-          break;
-        default:
-          passesUserFilter = true;
+  // Memoize filtered campaigns to prevent unnecessary recalculations
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(campaign => {
+      // First apply status filter using the new campaignStatus function
+      let passesStatusFilter = true;
+      if (activeFilter !== ActiveFilter.All) {
+        const status = campaign.account.campaignStatus();
+        passesStatusFilter = status.status === activeFilter;
       }
-    }
 
-    return passesStatusFilter && passesUserFilter;
-  });
+      // Then apply user filter
+      let passesUserFilter = true;
+      if (publicKey) {
+        const status = campaign.account.campaignStatus();
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCampaigns = filteredCampaigns.slice(startIndex, endIndex);
+        switch (userFilter) {
+          case UserFilter.MyCampaigns:
+            passesUserFilter = status.amITheOwner;
+            break;
+          case UserFilter.Contributed:
+            // Check if user has contributed using the campaignStatus logic
+            passesUserFilter = status.isContributed;
+            break;
+          case UserFilter.Claimable:
+            // Campaigns where user can claim (failed campaigns where user contributed)
+            passesUserFilter =
+              (status.isContributed && !status.isGoalReached) ||
+              (status.amITheOwner && status.isGoalReached);
+            break;
+          default:
+            passesUserFilter = true;
+        }
+      }
+
+      return passesStatusFilter && passesUserFilter;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaigns, activeFilter, userFilter, publicKey, deadlineTimestamp]);
+
+  // Memoize pagination calculations
+  const paginationData = useMemo(() => {
+    const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedCampaigns = filteredCampaigns.slice(startIndex, endIndex);
+
+    return { totalPages, paginatedCampaigns };
+  }, [filteredCampaigns, currentPage, itemsPerPage]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -94,7 +104,7 @@ export function CampaignsList({
         <h2 className="text-3xl font-bold">Campaigns</h2>
         <Badge variant="secondary" className="px-3 py-1">
           {filteredCampaigns.length > itemsPerPage
-            ? `Page ${currentPage} of ${totalPages} • ${filteredCampaigns.length} campaigns`
+            ? `Page ${currentPage} of ${paginationData.totalPages} • ${filteredCampaigns.length} campaigns`
             : `${filteredCampaigns.length} of ${campaigns.length} campaigns`}
         </Badge>
       </div>
@@ -149,14 +159,14 @@ export function CampaignsList({
             layout
           >
             <AnimatePresence mode="popLayout">
-              {paginatedCampaigns.map((campaign, index) => (
+              {paginationData.paginatedCampaigns.map(campaign => (
                 <CampaignCard
                   key={campaign.publicKey.toBase58()}
                   campaign={campaign}
-                  index={index}
                   onContribute={onContribute}
                   onClaim={onClaim}
                   getCampaignStatus={getCampaignStatus}
+                  deadlineTimestamp={deadlineTimestamp}
                 />
               ))}
             </AnimatePresence>
@@ -164,7 +174,7 @@ export function CampaignsList({
 
           <PaginationControls
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={paginationData.totalPages}
             totalItems={filteredCampaigns.length}
             itemsPerPage={itemsPerPage}
             onPageChange={handlePageChange}
@@ -174,3 +184,6 @@ export function CampaignsList({
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const CampaignsList = memo(CampaignsListComponent);

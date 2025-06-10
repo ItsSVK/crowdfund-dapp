@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { CreateCampaignDialog } from '@/components/create-campaign-dialog';
 import { ContributeModal } from '@/components/contribute-modal';
 import {
@@ -13,22 +13,10 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { Campaign } from '@/types/campaign';
 import { ClaimModal } from '@/components/claim-modal';
 import { useCampaigns } from '@/hooks/useCampaigns';
-
-export enum ActiveFilter {
-  All = 'All',
-  Active = 'Active',
-  Past = 'Past',
-  Cancelled = 'Cancelled',
-}
-
-export enum UserFilter {
-  MyCampaigns = 'My Campaigns',
-  Contributed = 'Contributed',
-  Claimable = 'Claimable',
-}
+import { ActiveFilter, UserFilter } from '@/types/campaign';
 
 export default function Dashboard() {
-  const { campaigns } = useCampaigns();
+  const { campaigns, refreshCampaigns } = useCampaigns();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [contributeModalOpen, setContributeModalOpen] = useState(false);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
@@ -41,37 +29,66 @@ export default function Dashboard() {
   const [userFilter, setUserFilter] = useState<UserFilter | null>(null);
   const { connected, publicKey } = useWallet();
 
+  // Memoized callback functions to prevent unnecessary re-renders
+  const getCampaignStatus = useCallback((campaign: Campaign) => {
+    return campaign.account.campaignStatus();
+  }, []);
+
   // Handle opening contribute modal
-  const handleContributeClick = (campaign: Campaign) => {
+  const handleContributeClick = useCallback((campaign: Campaign) => {
     setSelectedCampaign(campaign);
     setContributeModalOpen(true);
-  };
+  }, []);
 
   // Handle opening claim modal
-  const handleClaimClick = (campaign: Campaign) => {
+  const handleClaimClick = useCallback((campaign: Campaign) => {
     console.log('Claiming campaign from page', campaign);
     setSelectedCampaign(campaign);
     setClaimModalOpen(true);
-  };
+  }, []);
 
-  const handleActiveFilterChange = (filter: ActiveFilter) => {
-    if (filter === ActiveFilter.All) {
-      setUserFilter(null);
-    }
-    if (filter === activeFilter) {
-      setActiveFilter(ActiveFilter.All);
-    } else {
-      setActiveFilter(filter);
-    }
-  };
+  const handleCreateCampaign = useCallback(() => {
+    setCreateDialogOpen(true);
+  }, []);
 
-  const handleUserFilterChange = (filter: UserFilter) => {
-    if (filter === userFilter) {
-      setUserFilter(null);
-    } else {
-      setUserFilter(filter);
-    }
-  };
+  const handleActiveFilterChange = useCallback(
+    (filter: ActiveFilter) => {
+      if (filter === ActiveFilter.All) {
+        setUserFilter(null);
+      }
+      if (filter === activeFilter) {
+        setActiveFilter(ActiveFilter.All);
+      } else {
+        setActiveFilter(filter);
+      }
+    },
+    [activeFilter]
+  );
+
+  const handleUserFilterChange = useCallback(
+    (filter: UserFilter) => {
+      if (filter === userFilter) {
+        setUserFilter(null);
+      } else {
+        setUserFilter(filter);
+      }
+    },
+    [userFilter]
+  );
+
+  useEffect(() => {
+    // Main data refresh interval - 15 seconds is optimal for blockchain data
+    // - Frequent enough to catch new donations and campaign changes
+    // - Not too aggressive to avoid unnecessary RPC calls
+    // - Deadline expiration is handled separately with 1-second precision
+    const interval = setInterval(() => {
+      refreshCampaigns();
+      // router.refresh();
+      console.log('Refreshing campaigns state');
+    }, 15 * 1000); // Changed from 10 to 15 seconds
+
+    return () => clearInterval(interval);
+  }, [refreshCampaigns]);
 
   return (
     <>
@@ -80,13 +97,13 @@ export default function Dashboard() {
         {/* Hero Section */}
         <HeroSection
           connected={connected}
-          onCreateCampaign={() => setCreateDialogOpen(true)}
+          onCreateCampaign={handleCreateCampaign}
         />
 
         {/* Stats Overview */}
         <StatsOverview
           campaigns={campaigns}
-          getCampaignStatus={campaign => campaign.account.campaignStatus()}
+          getCampaignStatus={getCampaignStatus}
         />
 
         {/* Filter Section */}
@@ -98,7 +115,7 @@ export default function Dashboard() {
           userFilter={userFilter}
           onStatusFilterChange={handleActiveFilterChange}
           onUserFilterChange={handleUserFilterChange}
-          getCampaignStatus={campaign => campaign.account.campaignStatus()}
+          getCampaignStatus={getCampaignStatus}
         />
 
         {/* Campaigns List */}
@@ -107,8 +124,8 @@ export default function Dashboard() {
           userFilter={userFilter}
           onContribute={handleContributeClick}
           onClaim={handleClaimClick}
-          onCreateCampaign={() => setCreateDialogOpen(true)}
-          getCampaignStatus={campaign => campaign.account.campaignStatus()}
+          onCreateCampaign={handleCreateCampaign}
+          getCampaignStatus={getCampaignStatus}
         />
       </main>
 

@@ -34,16 +34,16 @@ export default function Navbar() {
               className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent"
               onClick={() => router.push('/')}
             >
-              CrowdSOL
+              CrowdFund
             </h1> */}
           </motion.div>
 
           {pathname === '/' && (
             <nav className="hidden md:flex items-center space-x-8">
-              {['Features', 'How it Works'].map((item, index) => (
+              {['Features', 'How it works'].map((item, index) => (
                 <motion.a
                   key={item}
-                  href={`#${item.toLowerCase().replace(' ', '-')}`}
+                  href={`#${item.toLowerCase().replaceAll(' ', '-')}`}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                   initial={{ opacity: 0, y: -10 }}
                   whileInView={{ opacity: 1, y: 0 }}

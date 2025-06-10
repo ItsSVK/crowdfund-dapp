@@ -1,10 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Target, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Target, Clock, XCircle } from 'lucide-react';
 import * as anchor from '@coral-xyz/anchor';
 import { Campaign, CampaignStatus } from '@/types/campaign';
-import { ActiveFilter, UserFilter } from '@/app/app/page';
+import { ActiveFilter, UserFilter } from '@/types/campaign';
 
 interface FilterSectionProps {
   campaigns: Campaign[];
@@ -30,14 +30,14 @@ export function FilterSection({
   // Status filter options with counts and colors
   const statusFilterOptions = [
     {
-      label: 'All',
+      label: ActiveFilter.All,
       count: campaigns.length,
       color: 'from-purple-500 to-blue-600',
       textColor: 'text-white',
       icon: Target,
     },
     {
-      label: 'Active',
+      label: ActiveFilter.Active,
       count: campaigns.filter(
         c => getCampaignStatus(c).status === ActiveFilter.Active
       ).length,
@@ -46,7 +46,7 @@ export function FilterSection({
       icon: Clock,
     },
     {
-      label: 'Past',
+      label: ActiveFilter.Past,
       count: campaigns.filter(
         c => getCampaignStatus(c).status === ActiveFilter.Past
       ).length,
@@ -55,7 +55,7 @@ export function FilterSection({
       icon: Clock,
     },
     {
-      label: 'Cancelled',
+      label: ActiveFilter.Cancelled,
       count: campaigns.filter(
         c => getCampaignStatus(c).status === ActiveFilter.Cancelled
       ).length,
@@ -81,7 +81,7 @@ export function FilterSection({
     //   color: 'from-slate-500 to-gray-600',
     // },
     {
-      label: 'My Campaigns',
+      label: UserFilter.MyCampaigns,
       count: publicKey
         ? campaigns.filter(c => {
             const status = getCampaignStatus(c);
@@ -91,7 +91,7 @@ export function FilterSection({
       color: 'from-indigo-500 to-purple-600',
     },
     {
-      label: 'My Contributions',
+      label: UserFilter.Contributed,
       count: publicKey
         ? campaigns.filter(c => {
             const status = getCampaignStatus(c);
@@ -101,7 +101,7 @@ export function FilterSection({
       color: 'from-orange-500 to-red-500',
     },
     {
-      label: 'Claimable',
+      label: UserFilter.Claimable,
       count: publicKey
         ? campaigns.filter(c => {
             const status = getCampaignStatus(c);
@@ -187,13 +187,13 @@ export function FilterSection({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => onUserFilterChange(option.label as UserFilter)}
-                  disabled={!publicKey && option.label !== 'All Campaigns'}
+                  disabled={!publicKey}
                   className={`
                     relative overflow-hidden rounded-full px-4 py-2 transition-all duration-300 border text-sm font-medium
                     ${
                       userFilter === option.label
                         ? `bg-gradient-to-r ${option.color} text-white shadow-lg border-transparent`
-                        : !publicKey && option.label !== 'All Campaigns'
+                        : !publicKey
                         ? 'bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50'
                         : 'bg-card hover:bg-accent border-border hover:border-primary/50'
                     }

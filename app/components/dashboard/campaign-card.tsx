@@ -4,24 +4,24 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Wallet } from 'lucide-react';
+import { CalendarDays, CheckIcon, Copy, Wallet } from 'lucide-react';
 import * as anchor from '@coral-xyz/anchor';
 import { Campaign, CampaignStatus } from '@/types/campaign';
-
+import React, { memo, useMemo } from 'react';
 interface CampaignCardProps {
   campaign: Campaign;
-  index: number;
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
   getCampaignStatus: (campaign: Campaign) => CampaignStatus;
+  deadlineTimestamp: number; // Add timestamp prop to force re-renders on deadline changes
 }
 
-export function CampaignCard({
+function CampaignCardComponent({
   campaign,
-  index,
   onContribute,
   onClaim,
   getCampaignStatus,
+  deadlineTimestamp, // Use prop instead of hook
 }: CampaignCardProps) {
   const formatSOL = (lamports: anchor.BN) => {
     return (lamports.toNumber() / anchor.web3.LAMPORTS_PER_SOL).toFixed(2);
@@ -43,7 +43,13 @@ export function CampaignCard({
     return Math.min((raised.toNumber() / goal.toNumber()) * 100, 100);
   };
 
-  const status = getCampaignStatus(campaign);
+  // Use deadlineTimestamp to ensure re-render when deadlines expire
+  // This dependency forces React to re-render and recalculate status when deadlines change
+  const status = useMemo(() => {
+    // The deadlineTimestamp dependency ensures this recalculates when deadlines expire
+    return getCampaignStatus(campaign);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign, getCampaignStatus, deadlineTimestamp]);
   const progress = getProgress(
     campaign.account.totalAmountDonated,
     campaign.account.goal
@@ -104,6 +110,15 @@ export function CampaignCard({
             <div className="flex items-center gap-2 text-muted-foreground">
               <CalendarDays className="h-4 w-4" />
               <span>
+                Created At:{' '}
+                <span className="text-blue-600">
+                  {formatDate(campaign.account.createdAt)}
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="h-4 w-4" />
+              <span>
                 Deadline:{' '}
                 <span className="text-purple-500">
                   {formatDate(campaign.account.deadline)}
@@ -113,9 +128,53 @@ export function CampaignCard({
             <div className="flex items-center gap-2 text-muted-foreground">
               <Wallet className="h-4 w-4" />
               <span className="truncate">
-                Owner: {campaign.account.owner.toBase58().slice(0, 8)}
-                ...
-                {campaign.account.owner.toBase58().slice(-8)}
+                Owner:{' '}
+                <span className="font-bold">
+                  {campaign.account.owner.toBase58().slice(0, 8)}
+                  ...
+                  {campaign.account.owner.toBase58().slice(-8)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-3 w-3 ml-2 cursor-pointer bg-transparent border-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      campaign.account.owner.toBase58()
+                    );
+                    document
+                      .getElementById(
+                        `check-icon-${campaign.publicKey.toBase58()}`
+                      )
+                      ?.classList.remove('hidden');
+                    document
+                      .getElementById(
+                        `copy-button-${campaign.publicKey.toBase58()}`
+                      )
+                      ?.classList.add('hidden');
+                    setTimeout(() => {
+                      document
+                        .getElementById(
+                          `check-icon-${campaign.publicKey.toBase58()}`
+                        )
+                        ?.classList.add('hidden');
+                      document
+                        .getElementById(
+                          `copy-button-${campaign.publicKey.toBase58()}`
+                        )
+                        ?.classList.remove('hidden');
+                    }, 1500);
+                  }}
+                >
+                  <Copy
+                    id={`copy-button-${campaign.publicKey.toBase58()}`}
+                    className="h-1 w-1 bg-transparent border-0 hover:bg-transparent"
+                  />
+                  <CheckIcon
+                    id={`check-icon-${campaign.publicKey.toBase58()}`}
+                    className="h-1 w-1 hidden bg-transparent border-0 hover:bg-transparent"
+                  />
+                </Button>
               </span>
             </div>
           </div>
@@ -143,3 +202,6 @@ export function CampaignCard({
     </motion.div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const CampaignCard = memo(CampaignCardComponent);

@@ -7,7 +7,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
     <WalletContextProvider>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
+        defaultTheme="light"
         enableSystem
         disableTransitionOnChange
       >

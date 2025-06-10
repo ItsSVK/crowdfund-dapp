@@ -135,14 +135,6 @@ export function DateTimePicker({
     );
   };
 
-  const isTimeDisabled = (time: string) => {
-    if (!minDate || !value) return false;
-    const [hours, minutes] = time.split(':').map(Number);
-    const selectedDate = new Date(value);
-    selectedDate.setHours(hours, minutes);
-    return selectedDate < minDate;
-  };
-
   const generateCalendarDays = () => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);

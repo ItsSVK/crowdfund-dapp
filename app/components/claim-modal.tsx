@@ -12,7 +12,6 @@ import { useState } from 'react';
 import { useAnchorProgram } from '@/hooks/useAnchorProgram';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import * as anchor from '@coral-xyz/anchor';
-import { SystemProgram } from '@solana/web3.js';
 import { toast } from 'sonner';
 import { errorMessages } from '@/lib/errorMessages';
 
@@ -24,11 +23,12 @@ interface ClaimModalProps {
 
 export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isClaimed, setIsClaimed] = useState(false);
   const { program, provider } = useAnchorProgram();
   const { refreshCampaigns } = useCampaigns();
 
   const campaignStatus = campaign?.account.campaignStatus();
-  if (campaignStatus?.status === 'Active') return;
+  if (campaignStatus?.status === 'Active' || isClaimed) return;
 
   const handleProceedClaim = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +111,7 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
       });
       onOpenChange(false);
       refreshCampaigns();
+      setIsClaimed(true);
     } catch (error) {
       console.error('Full error:', error);
 
@@ -145,7 +146,9 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
           </span>
         </DialogDescription>
         <DialogFooter>
-          <Button onClick={handleProceedClaim}>Proceed</Button>
+          <Button onClick={handleProceedClaim} disabled={isLoading}>
+            {isLoading ? 'Processing...' : 'Proceed'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

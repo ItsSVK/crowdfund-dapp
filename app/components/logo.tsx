@@ -138,7 +138,7 @@ export function Logo({
       {showText && (
         <div className="flex flex-col">
           <span className="font-bold text-lg bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            CrowdSOL
+            CrowdFund
           </span>
           <span className="text-xs text-muted-foreground font-medium">
             SOLANA

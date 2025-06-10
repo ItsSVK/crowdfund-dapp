@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description:
     'Fund innovative projects with the power of Solana blockchain. Create campaigns, donate SOL, and support the next generation of ideas.',
   generator: 'Next.js',
-  metadataBase: new URL('https://crowdsol.itssvk.dev'),
+  metadataBase: new URL('https://crowdfund.itssvk.dev'),
   keywords: [
     'crowdfunding',
     'solana',
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
     'fundraising',
     'web3',
   ],
-  authors: [{ name: 'CrowdFund Team' }],
-  creator: 'CrowdFund Solana',
-  publisher: 'CrowdFund Solana',
+  authors: [{ name: 'Shouvik Mohanta' }],
+  creator: 'Shouvik Mohanta',
+  publisher: 'Shouvik Mohanta',
   formatDetection: {
     email: false,
     address: false,
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://crowdsol.itssvk.dev',
+    url: 'https://crowdfund.itssvk.dev',
     title: 'CrowdFund Solana - Decentralized Crowdfunding',
     description:
       'Fund innovative projects with the power of Solana blockchain. Create campaigns, donate SOL, and support the next generation of ideas.',

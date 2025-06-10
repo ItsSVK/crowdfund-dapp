@@ -9,6 +9,7 @@ interface CampaignAccount {
   totalAmountDonated: anchor.BN;
   withdrawnByOwner: boolean;
   treasury: anchor.web3.PublicKey;
+  createdAt: anchor.BN;
   isCancelled: boolean;
 }
 
@@ -34,4 +35,17 @@ export interface CampaignStatus {
   isContributed: boolean;
   isGoalReached: boolean;
   amITheOwner: boolean;
+}
+
+export enum ActiveFilter {
+  All = 'All',
+  Active = 'Active',
+  Past = 'Past',
+  Cancelled = 'Cancelled',
+}
+
+export enum UserFilter {
+  MyCampaigns = 'My Campaigns',
+  Contributed = 'Contributed',
+  Claimable = 'Claimable',
 }
