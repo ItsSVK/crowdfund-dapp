@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Target, Wallet, Plus } from 'lucide-react';
+import { Target, Plus } from 'lucide-react';
 import { CustomWalletButton } from '@/components/pages/CustomWalletButton';
 import { CampaignCard } from './campaign-card';
 import { PaginationControls } from './pagination-controls';
@@ -169,7 +169,6 @@ function CampaignsListComponent({
                   onClaim={onClaim}
                   getCampaignStatus={getCampaignStatus}
                   deadlineTimestamp={deadlineTimestamp}
-                  connected={connected}
                 />
               ))}
             </AnimatePresence>

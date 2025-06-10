@@ -14,8 +14,7 @@ interface CampaignCardProps {
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
   getCampaignStatus: (campaign: Campaign) => CampaignStatus;
-  deadlineTimestamp: number; // Add timestamp prop to force re-renders on deadline changes
-  connected: boolean; // Add connected prop to handle wallet state
+  deadlineTimestamp: number;
 }
 
 function CampaignCardComponent({
@@ -23,8 +22,7 @@ function CampaignCardComponent({
   onContribute,
   onClaim,
   getCampaignStatus,
-  deadlineTimestamp, // Use prop instead of hook
-  connected,
+  deadlineTimestamp,
 }: CampaignCardProps) {
   const formatSOL = (lamports: anchor.BN) => {
     return (lamports.toNumber() / anchor.web3.LAMPORTS_PER_SOL).toFixed(2);
@@ -198,7 +196,7 @@ function CampaignCardComponent({
                   status.btnText === 'Claim' ||
                   status.btnText === 'Withdraw'
                 ) {
-                  console.log('Claiming campaign', campaign);
+                  // console.log('Claiming campaign', campaign);
                   onClaim(campaign);
                 }
               }}

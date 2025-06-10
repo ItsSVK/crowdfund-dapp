@@ -42,7 +42,7 @@ export default function Dashboard() {
 
   // Handle opening claim modal
   const handleClaimClick = useCallback((campaign: Campaign) => {
-    console.log('Claiming campaign from page', campaign);
+    // console.log('Claiming campaign from page', campaign);
     setSelectedCampaign(campaign);
     setClaimModalOpen(true);
   }, []);
@@ -84,7 +84,7 @@ export default function Dashboard() {
     const interval = setInterval(() => {
       refreshCampaigns();
       // router.refresh();
-      console.log('Refreshing campaigns state');
+      // console.log('Refreshing campaigns state');
     }, 15 * 1000); // Changed from 10 to 15 seconds
 
     return () => clearInterval(interval);

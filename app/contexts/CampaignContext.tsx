@@ -214,7 +214,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
               b.account.createdAt.toNumber() - a.account.createdAt.toNumber()
           );
 
-        console.log('Campaigns Updated (initial/refresh)...');
+        // console.log('Campaigns Updated (initial/refresh)...');
         setCampaigns(formattedCampaigns);
         setLastPublicKey(publicKey?.toBase58() || 'no-wallet');
       } catch (error) {
@@ -270,7 +270,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (hasExpiredCampaigns) {
-          console.log('Campaign deadline expired - updating button states');
+          // console.log('Campaign deadline expired - updating button states');
           // Update timestamp to force re-renders of components that depend on campaign status
           setDeadlineTimestamp(now);
           // Return a new array to trigger re-render, but preserve object references
@@ -451,7 +451,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
         // Check if publicKey has changed - if so, force complete refresh
         // because user's relationship to all campaigns has changed
         if (lastPublicKey && lastPublicKey !== currentPublicKeyString) {
-          console.log('PublicKey changed - forcing complete campaign refresh');
+          // console.log('PublicKey changed - forcing complete campaign refresh');
           setLastPublicKey(currentPublicKeyString);
           return formattedCampaigns;
         }
@@ -463,7 +463,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
 
         // If no campaigns exist, return the new ones
         if (currentCampaigns.length === 0) {
-          console.log('Campaigns Updated (initial load)...');
+          // console.log('Campaigns Updated (initial load)...');
           return formattedCampaigns;
         }
 
@@ -496,10 +496,10 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (hasChanges) {
-          console.log('Campaigns Updated (changes detected)...');
+          // console.log('Campaigns Updated (changes detected)...');
           return updatedCampaigns;
         } else {
-          console.log('Campaigns checked - no changes detected');
+          // console.log('Campaigns checked - no changes detected');
           return currentCampaigns; // No changes, return existing array
         }
       });
@@ -538,7 +538,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       if (campaigns.length === 0) {
         setLoading(false);
       }
-      console.log('Campaigns refreshed ', campaigns.length);
+      // console.log('Campaigns refreshed ', campaigns.length);
     }
   }, [program, publicKey, campaigns.length, lastPublicKey]);
 
