@@ -323,7 +323,7 @@ export function CreateCampaignDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="flex-1"
+                className="flex-1 cursor-pointer text-white"
                 disabled={isLoading}
               >
                 Cancel
@@ -331,7 +331,7 @@ export function CreateCampaignDialog({
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 cursor-pointer"
               >
                 <AnimatePresence mode="wait">
                   {isLoading ? (

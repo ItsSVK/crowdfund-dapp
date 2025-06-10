@@ -8,17 +8,25 @@
   },
   "instructions": [
     {
-      "name": "create_campaign",
-      "discriminator": [
-        111,
-        131,
-        187,
-        98,
-        160,
-        193,
-        114,
-        244
+      "name": "cancel_campaign",
+      "discriminator": [66, 10, 32, 138, 122, 36, 134, 202],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": ["campaign"]
+        }
       ],
+      "args": []
+    },
+    {
+      "name": "create_campaign",
+      "discriminator": [111, 131, 187, 98, 160, 193, 114, 244],
       "accounts": [
         {
           "name": "campaign",
@@ -27,16 +35,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  109,
-                  112,
-                  97,
-                  105,
-                  103,
-                  110
-                ]
+                "value": [99, 97, 109, 112, 97, 105, 103, 110]
               },
               {
                 "kind": "account",
@@ -61,16 +60,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  116,
-                  114,
-                  101,
-                  97,
-                  115,
-                  117,
-                  114,
-                  121
-                ]
+                "value": [116, 114, 101, 97, 115, 117, 114, 121]
               },
               {
                 "kind": "account",
@@ -111,16 +101,7 @@
     },
     {
       "name": "donate_to_campaign",
-      "discriminator": [
-        11,
-        213,
-        34,
-        2,
-        196,
-        121,
-        15,
-        216
-      ],
+      "discriminator": [11, 213, 34, 2, 196, 121, 15, 216],
       "accounts": [
         {
           "name": "campaign",
@@ -138,19 +119,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  116,
-                  114,
-                  105,
-                  98,
-                  117,
-                  116,
-                  111,
-                  114
-                ]
+                "value": [99, 111, 110, 116, 114, 105, 98, 117, 116, 111, 114]
               },
               {
                 "kind": "account",
@@ -181,31 +150,13 @@
     },
     {
       "name": "initialize",
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
+      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
       "accounts": [],
       "args": []
     },
     {
       "name": "withdraw_by_owner",
-      "discriminator": [
-        166,
-        40,
-        245,
-        215,
-        194,
-        84,
-        74,
-        94
-      ],
+      "discriminator": [166, 40, 245, 215, 194, 84, 74, 94],
       "accounts": [
         {
           "name": "campaign",
@@ -215,9 +166,33 @@
           "name": "owner",
           "writable": true,
           "signer": true,
-          "relations": [
-            "campaign"
-          ]
+          "relations": ["campaign"]
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_if_cancelled",
+      "discriminator": [142, 96, 18, 137, 236, 209, 246, 76],
+      "accounts": [
+        {
+          "name": "campaign",
+          "writable": true,
+          "relations": ["contributor_record"]
+        },
+        {
+          "name": "contributor_record",
+          "writable": true
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "signer": true,
+          "relations": ["contributor_record"]
         },
         {
           "name": "treasury",
@@ -228,23 +203,12 @@
     },
     {
       "name": "withdraw_if_failed",
-      "discriminator": [
-        222,
-        183,
-        165,
-        184,
-        213,
-        206,
-        186,
-        173
-      ],
+      "discriminator": [222, 183, 165, 184, 213, 206, 186, 173],
       "accounts": [
         {
           "name": "campaign",
           "writable": true,
-          "relations": [
-            "contributor_record"
-          ]
+          "relations": ["contributor_record"]
         },
         {
           "name": "contributor_record",
@@ -254,17 +218,11 @@
           "name": "contributor",
           "writable": true,
           "signer": true,
-          "relations": [
-            "contributor_record"
-          ]
+          "relations": ["contributor_record"]
         },
         {
           "name": "treasury",
           "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -273,29 +231,11 @@
   "accounts": [
     {
       "name": "Campaign",
-      "discriminator": [
-        50,
-        40,
-        49,
-        11,
-        157,
-        220,
-        229,
-        192
-      ]
+      "discriminator": [50, 40, 49, 11, 157, 220, 229, 192]
     },
     {
       "name": "ContributorRecord",
-      "discriminator": [
-        205,
-        80,
-        134,
-        228,
-        85,
-        135,
-        197,
-        176
-      ]
+      "discriminator": [205, 80, 134, 228, 85, 135, 197, 176]
     }
   ],
   "errors": [
@@ -338,6 +278,21 @@
       "code": 6007,
       "name": "AlreadyWithdrawnByOwner",
       "msg": "Owner has already withdrawn."
+    },
+    {
+      "code": 6008,
+      "name": "CampaignCancelled",
+      "msg": "The campaign is cancelled."
+    },
+    {
+      "code": 6009,
+      "name": "CampaignNotCancelled",
+      "msg": "The campaign is not cancelled."
+    },
+    {
+      "code": 6010,
+      "name": "CampaignAlreadyCancelled",
+      "msg": "The campaign is already cancelled."
     }
   ],
   "types": [
@@ -383,6 +338,10 @@
           {
             "name": "created_at",
             "type": "i64"
+          },
+          {
+            "name": "is_cancelled",
+            "type": "bool"
           }
         ]
       }

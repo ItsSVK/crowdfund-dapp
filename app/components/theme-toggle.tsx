@@ -13,7 +13,7 @@ export function ThemeToggle() {
       variant="outline"
       size="icon"
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-      className="relative overflow-hidden"
+      className="relative overflow-hidden cursor-pointer"
     >
       <motion.div
         initial={false}

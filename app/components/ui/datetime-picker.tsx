@@ -225,7 +225,7 @@ export function DateTimePicker({
           <Button
             variant="ghost"
             size="sm"
-            className="h-auto p-0 hover:bg-transparent"
+            className="h-auto p-0 hover:bg-transparent cursor-pointer"
             onClick={e => {
               e.stopPropagation();
               handleClear();
@@ -277,7 +277,7 @@ export function DateTimePicker({
                     variant="ghost"
                     size="sm"
                     onClick={() => navigateMonth('prev')}
-                    className="text-white hover:bg-white/20 h-6 w-6 p-0"
+                    className="text-white hover:bg-white/20 h-6 w-6 p-0 cursor-pointer"
                   >
                     <ChevronLeft className="h-3 w-3" />
                   </Button>
@@ -290,7 +290,7 @@ export function DateTimePicker({
                     variant="ghost"
                     size="sm"
                     onClick={() => navigateMonth('next')}
-                    className="text-white hover:bg-white/20 h-6 w-6 p-0"
+                    className="text-white hover:bg-white/20 h-6 w-6 p-0 cursor-pointer"
                   >
                     <ChevronRight className="h-3 w-3" />
                   </Button>
@@ -322,7 +322,7 @@ export function DateTimePicker({
                           onClick={() => handleDateSelect(day)}
                           disabled={isDateDisabled(day)}
                           className={cn(
-                            'h-8 w-8 p-0 text-xs hover:bg-purple-50 hover:text-purple-600',
+                            'h-8 w-8 p-0 text-xs hover:bg-purple-50 hover:text-purple-600 cursor-pointer',
                             value &&
                               value.getDate() === day &&
                               value.getMonth() === currentMonth &&
@@ -368,7 +368,7 @@ export function DateTimePicker({
                         setIsOpen(false);
                       }}
                       disabled={!value}
-                      className="h-8 px-3 text-xs bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                      className="h-8 px-3 text-xs bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 cursor-pointer"
                     >
                       Set
                     </Button>

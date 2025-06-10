@@ -35,7 +35,7 @@ export function PaginationControls({
         size="sm"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="flex items-center space-x-1"
+        className="flex items-center space-x-1 cursor-pointer"
       >
         <span>←</span>
         <span>Previous</span>
@@ -73,7 +73,7 @@ export function PaginationControls({
               variant={currentPage === page ? 'default' : 'outline'}
               size="sm"
               onClick={() => onPageChange(page)}
-              className={`min-w-[40px] ${
+              className={`min-w-[40px] cursor-pointer ${
                 currentPage === page
                   ? 'bg-gradient-to-r from-purple-500 to-blue-600 text-white'
                   : ''
@@ -91,7 +91,7 @@ export function PaginationControls({
         size="sm"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="flex items-center space-x-1"
+        className="flex items-center space-x-1 cursor-pointer"
       >
         <span>Next</span>
         <span>→</span>

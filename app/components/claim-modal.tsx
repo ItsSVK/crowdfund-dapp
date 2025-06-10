@@ -146,7 +146,11 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
           </span>
         </DialogDescription>
         <DialogFooter>
-          <Button onClick={handleProceedClaim} disabled={isLoading}>
+          <Button
+            onClick={handleProceedClaim}
+            disabled={isLoading}
+            className="cursor-pointer text-white"
+          >
             {isLoading ? 'Processing...' : 'Proceed'}
           </Button>
         </DialogFooter>

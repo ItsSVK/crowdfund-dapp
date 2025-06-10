@@ -45,9 +45,9 @@ function CampaignsListComponent({
         passesStatusFilter = status.status === activeFilter;
       }
 
-      // Then apply user filter
+      // Then apply user filter (only if wallet connected and filter selected)
       let passesUserFilter = true;
-      if (publicKey) {
+      if (publicKey && userFilter) {
         const status = campaign.account.campaignStatus();
 
         switch (userFilter) {
@@ -67,6 +67,10 @@ function CampaignsListComponent({
           default:
             passesUserFilter = true;
         }
+      } else if (!publicKey && userFilter) {
+        // If wallet not connected but user filter selected, show no campaigns
+        // This will clear the view until wallet is connected
+        passesUserFilter = false;
       }
 
       return passesStatusFilter && passesUserFilter;
@@ -109,18 +113,7 @@ function CampaignsListComponent({
         </Badge>
       </div>
 
-      {!connected ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <div className="text-6xl mb-4">🚀</div>
-            <h3 className="text-lg font-semibold mb-2 text-muted-foreground flex items-center justify-center gap-2">
-              <Wallet className="h-5 w-5" />
-              Connect your wallet to explore and launch campaigns
-            </h3>
-            <CustomWalletButton />
-          </CardContent>
-        </Card>
-      ) : loading ? (
+      {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -143,13 +136,22 @@ function CampaignsListComponent({
             <p className="text-muted-foreground mb-4">
               Be the first to create a campaign and start raising funds!
             </p>
-            <Button
-              onClick={onCreateCampaign}
-              className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create Your First Campaign
-            </Button>
+            {connected ? (
+              <Button
+                onClick={onCreateCampaign}
+                className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 cursor-pointer text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First Campaign
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Connect your wallet to create campaigns
+                </p>
+                <CustomWalletButton />
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -167,6 +169,7 @@ function CampaignsListComponent({
                   onClaim={onClaim}
                   getCampaignStatus={getCampaignStatus}
                   deadlineTimestamp={deadlineTimestamp}
+                  connected={connected}
                 />
               ))}
             </AnimatePresence>

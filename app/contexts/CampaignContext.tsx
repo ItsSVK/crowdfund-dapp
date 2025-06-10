@@ -50,16 +50,206 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
   const [lastPublicKey, setLastPublicKey] = useState<string | null>(null);
   const [deadlineTimestamp, setDeadlineTimestamp] = useState(Date.now());
 
+  // Initial fetch when program becomes available
   useEffect(() => {
     const fetchCampaigns = async () => {
-      await refreshCampaigns();
+      if (!program) return;
+      try {
+        // Only set loading to true if we have no campaigns (initial load)
+        if (campaigns.length === 0) {
+          setLoading(true);
+        }
+
+        const campaignAccounts = await (program.account as any).campaign.all();
+
+        // Only fetch user contributions if wallet is connected
+        let userContributions: ContributorRecord[] = [];
+        if (publicKey) {
+          userContributions = await (
+            program.account as any
+          ).contributorRecord.all([
+            {
+              memcmp: {
+                offset: 40,
+                bytes: publicKey.toBase58(),
+              },
+            },
+          ]);
+        }
+
+        // Use the same formatting logic as refreshCampaigns
+        const formattedCampaigns = campaignAccounts
+          .map((campaign: Campaign) => ({
+            publicKey: campaign.publicKey,
+            account: {
+              name: campaign.account.name,
+              description: campaign.account.description,
+              owner: campaign.account.owner,
+              goal: campaign.account.goal,
+              deadline: campaign.account.deadline,
+              totalAmountDonated: campaign.account.totalAmountDonated,
+              withdrawnByOwner: campaign.account.withdrawnByOwner,
+              treasury: campaign.account.treasury,
+              createdAt: campaign.account.createdAt,
+              isCancelled: campaign.account.isCancelled,
+              campaignStatus: () => {
+                const isContributed = publicKey
+                  ? userContributions.find(
+                      (contribution: ContributorRecord) =>
+                        contribution.account.campaign.toBase58() ===
+                        campaign.publicKey.toBase58()
+                    )
+                  : false;
+                const isGoalReached =
+                  campaign.account.totalAmountDonated.toNumber() >=
+                  campaign.account.goal.toNumber();
+                const amITheOwner = publicKey
+                  ? campaign.account.owner.toBase58() === publicKey.toBase58()
+                  : false;
+
+                // Handle cases based on connection status
+                if (!publicKey) {
+                  // Not connected - show generic states with "Connect Wallet" action
+                  if (campaign.account.isCancelled)
+                    return {
+                      status: 'Cancelled',
+                      color: 'bg-red-500',
+                      btnText: 'Connect Wallet',
+                      disabled: false,
+                      isContributed: false,
+                      isGoalReached,
+                      amITheOwner: false,
+                    };
+                  if (
+                    campaign.account.deadline?.toNumber() >=
+                    Date.now() / 1000
+                  )
+                    return {
+                      status: 'Active',
+                      color: 'bg-blue-500',
+                      btnText: 'Connect Wallet',
+                      disabled: false,
+                      isContributed: false,
+                      isGoalReached,
+                      amITheOwner: false,
+                    };
+                  if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
+                    return {
+                      status: 'Past',
+                      color: 'bg-emerald-500',
+                      btnText: 'Connect Wallet',
+                      disabled: false,
+                      isContributed: false,
+                      isGoalReached,
+                      amITheOwner: false,
+                    };
+                  return {
+                    status: 'Active',
+                    color: 'bg-blue-500',
+                    btnText: 'Connect Wallet',
+                    disabled: false,
+                    isContributed: false,
+                    isGoalReached,
+                    amITheOwner: false,
+                  };
+                }
+
+                // Connected - show normal logic
+                if (campaign.account.isCancelled)
+                  return {
+                    status: 'Cancelled',
+                    color: 'bg-red-500',
+                    btnText: isContributed ? 'Claim' : 'Canceled',
+                    disabled: !isContributed,
+                    isContributed: !!isContributed,
+                    isGoalReached,
+                    amITheOwner,
+                  };
+                if (campaign.account.deadline?.toNumber() >= Date.now() / 1000)
+                  return {
+                    status: 'Active',
+                    color: 'bg-blue-500',
+                    btnText: 'Contribute',
+                    disabled: false,
+                    isContributed: !!isContributed,
+                    isGoalReached,
+                    amITheOwner,
+                  };
+                if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
+                  return {
+                    status: 'Past',
+                    color: 'bg-emerald-500',
+                    btnText: isGoalReached
+                      ? amITheOwner
+                        ? 'Withdraw'
+                        : 'Completed'
+                      : isContributed
+                      ? 'Claim'
+                      : 'Completed',
+                    disabled: isGoalReached
+                      ? amITheOwner
+                        ? false
+                        : true
+                      : isContributed
+                      ? false
+                      : true,
+                    isContributed: !!isContributed,
+                    isGoalReached,
+                    amITheOwner,
+                  };
+                return {
+                  status: 'Active',
+                  color: 'bg-blue-500',
+                  btnText: 'Contribute',
+                  disabled: false,
+                  isContributed: !!isContributed,
+                  isGoalReached,
+                  amITheOwner,
+                };
+              },
+            },
+          }))
+          .sort(
+            (a: Campaign, b: Campaign) =>
+              b.account.createdAt.toNumber() - a.account.createdAt.toNumber()
+          );
+
+        console.log('Campaigns Updated (initial/refresh)...');
+        setCampaigns(formattedCampaigns);
+        setLastPublicKey(publicKey?.toBase58() || 'no-wallet');
+      } catch (error) {
+        console.error('Error fetching campaigns:', error);
+
+        // Provide specific error messages for network issues
+        if (error instanceof Error) {
+          if (
+            error.message.includes('Failed to fetch') ||
+            error.message.includes('Network request failed')
+          ) {
+            toast.error(
+              'Network connection failed. Please check your internet connection and try again.'
+            );
+          } else if (error.message.includes('CORS')) {
+            toast.error(
+              'Connection blocked by CORS policy. Please try refreshing the page.'
+            );
+          } else {
+            toast.error('Failed to load campaigns. Please try again.');
+          }
+        }
+      } finally {
+        if (campaigns.length === 0) {
+          setLoading(false);
+        }
+      }
     };
+
     fetchCampaigns();
-  }, [program, publicKey]);
+  }, [program, publicKey]); // Depend on both program and publicKey for initial fetch
 
   useEffect(() => {
     if (!connected) {
-      setCampaigns([]);
+      // Don't clear campaigns when disconnected - keep them visible
       setLastPublicKey(null);
     }
   }, [connected]);
@@ -95,7 +285,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshCampaigns = useCallback(async () => {
-    if (!program || !publicKey) return;
+    if (!program) return;
     try {
       // Only set loading to true if we have no campaigns (initial load)
       // Don't show loading spinner for background refreshes
@@ -104,16 +294,21 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       }
 
       const campaignAccounts = await (program.account as any).campaign.all();
-      const userContributions = await (
-        program.account as any
-      ).contributorRecord.all([
-        {
-          memcmp: {
-            offset: 40,
-            bytes: publicKey.toBase58(),
+
+      // Only fetch user contributions if wallet is connected
+      let userContributions: ContributorRecord[] = [];
+      if (publicKey) {
+        userContributions = await (
+          program.account as any
+        ).contributorRecord.all([
+          {
+            memcmp: {
+              offset: 40,
+              bytes: publicKey.toBase58(),
+            },
           },
-        },
-      ]);
+        ]);
+      }
 
       const formattedCampaigns = campaignAccounts
         .map((campaign: Campaign) => ({
@@ -130,23 +325,72 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
             createdAt: campaign.account.createdAt,
             isCancelled: campaign.account.isCancelled,
             campaignStatus: () => {
-              const isContributed = userContributions.find(
-                (contribution: ContributorRecord) =>
-                  contribution.account.campaign.toBase58() ===
-                  campaign.publicKey.toBase58()
-              );
+              const isContributed = publicKey
+                ? userContributions.find(
+                    (contribution: ContributorRecord) =>
+                      contribution.account.campaign.toBase58() ===
+                      campaign.publicKey.toBase58()
+                  )
+                : false;
               const isGoalReached =
                 campaign.account.totalAmountDonated.toNumber() >=
                 campaign.account.goal.toNumber();
-              const amITheOwner =
-                campaign.account.owner.toBase58() === publicKey?.toBase58();
+              const amITheOwner = publicKey
+                ? campaign.account.owner.toBase58() === publicKey.toBase58()
+                : false;
+
+              // Handle cases based on connection status
+              if (!publicKey) {
+                // Not connected - show generic states with "Connect Wallet" action
+                if (campaign.account.isCancelled)
+                  return {
+                    status: 'Cancelled',
+                    color: 'bg-red-500',
+                    btnText: 'Connect Wallet',
+                    disabled: false,
+                    isContributed: false,
+                    isGoalReached,
+                    amITheOwner: false,
+                  };
+                if (campaign.account.deadline?.toNumber() >= Date.now() / 1000)
+                  return {
+                    status: 'Active',
+                    color: 'bg-blue-500',
+                    btnText: 'Connect Wallet',
+                    disabled: false,
+                    isContributed: false,
+                    isGoalReached,
+                    amITheOwner: false,
+                  };
+                if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
+                  return {
+                    status: 'Past',
+                    color: 'bg-emerald-500',
+                    btnText: 'Connect Wallet',
+                    disabled: false,
+                    isContributed: false,
+                    isGoalReached,
+                    amITheOwner: false,
+                  };
+                return {
+                  status: 'Active',
+                  color: 'bg-blue-500',
+                  btnText: 'Connect Wallet',
+                  disabled: false,
+                  isContributed: false,
+                  isGoalReached,
+                  amITheOwner: false,
+                };
+              }
+
+              // Connected - show normal logic
               if (campaign.account.isCancelled)
                 return {
                   status: 'Cancelled',
                   color: 'bg-red-500',
                   btnText: isContributed ? 'Claim' : 'Canceled',
                   disabled: !isContributed,
-                  isContributed,
+                  isContributed: !!isContributed,
                   isGoalReached,
                   amITheOwner,
                 };
@@ -156,7 +400,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
                   color: 'bg-blue-500',
                   btnText: 'Contribute',
                   disabled: false,
-                  isContributed,
+                  isContributed: !!isContributed,
                   isGoalReached,
                   amITheOwner,
                 };
@@ -178,7 +422,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
                     : isContributed
                     ? false
                     : true,
-                  isContributed,
+                  isContributed: !!isContributed,
                   isGoalReached,
                   amITheOwner,
                 };
@@ -187,7 +431,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
                 color: 'bg-blue-500',
                 btnText: 'Contribute',
                 disabled: false,
-                isContributed,
+                isContributed: !!isContributed,
                 isGoalReached,
                 amITheOwner,
               };
@@ -202,7 +446,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
 
       // Smart update: only update campaigns that have actually changed
       setCampaigns(currentCampaigns => {
-        const currentPublicKeyString = publicKey.toBase58();
+        const currentPublicKeyString = publicKey?.toBase58() || 'no-wallet';
 
         // Check if publicKey has changed - if so, force complete refresh
         // because user's relationship to all campaigns has changed
@@ -269,10 +513,25 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
             error.error.errorCode.code as keyof typeof errorMessages
           ]
         );
-      }
-
-      if (error instanceof Error && 'transactionLogs' in error) {
-        console.error('Transaction logs:', error.transactionLogs);
+      } else if (error instanceof Error) {
+        // Handle network-specific errors
+        if (
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('Network request failed')
+        ) {
+          toast.error(
+            'Network connection failed. Please check your internet connection and try again.'
+          );
+        } else if (error.message.includes('CORS')) {
+          toast.error(
+            'Connection blocked by CORS policy. Please try refreshing the page.'
+          );
+        } else if ('transactionLogs' in error) {
+          console.error('Transaction logs:', error.transactionLogs);
+          toast.error('Transaction failed. Please try again.');
+        } else {
+          toast.error('Failed to refresh campaigns. Please try again.');
+        }
       }
     } finally {
       // Only set loading to false if we were actually loading

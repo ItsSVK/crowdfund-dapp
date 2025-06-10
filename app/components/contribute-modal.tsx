@@ -241,7 +241,7 @@ export function ContributeModal({
                   size="sm"
                   onClick={() => setAmount(value.toString())}
                   disabled={isLoading}
-                  className="text-xs"
+                  className="text-xs cursor-pointer"
                 >
                   {value} SOL
                 </Button>
@@ -253,14 +253,14 @@ export function ContributeModal({
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 cursor-pointer text-white"
               onClick={handleClose}
               disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
-              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 cursor-pointer text-white"
               onClick={handleContribute}
               disabled={isLoading || !amount || parseFloat(amount) <= 0}
             >

@@ -8,12 +8,14 @@ import { CalendarDays, CheckIcon, Copy, Wallet } from 'lucide-react';
 import * as anchor from '@coral-xyz/anchor';
 import { Campaign, CampaignStatus } from '@/types/campaign';
 import React, { memo, useMemo } from 'react';
+import { CustomWalletButton } from '@/components/pages/CustomWalletButton';
 interface CampaignCardProps {
   campaign: Campaign;
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
   getCampaignStatus: (campaign: Campaign) => CampaignStatus;
   deadlineTimestamp: number; // Add timestamp prop to force re-renders on deadline changes
+  connected: boolean; // Add connected prop to handle wallet state
 }
 
 function CampaignCardComponent({
@@ -22,6 +24,7 @@ function CampaignCardComponent({
   onClaim,
   getCampaignStatus,
   deadlineTimestamp, // Use prop instead of hook
+  connected,
 }: CampaignCardProps) {
   const formatSOL = (lamports: anchor.BN) => {
     return (lamports.toNumber() / anchor.web3.LAMPORTS_PER_SOL).toFixed(2);
@@ -180,23 +183,29 @@ function CampaignCardComponent({
           </div>
 
           {/* Action Button */}
-          <Button
-            className="w-full"
-            variant={status.btnText === 'Contribute' ? 'default' : 'outline'}
-            disabled={status.disabled}
-            onClick={() => {
-              if (status.btnText === 'Contribute') {
-                onContribute(campaign);
-              }
-              if (status.btnText === 'Claim' || status.btnText === 'Withdraw') {
-                console.log('Claiming campaign', campaign);
-                onClaim(campaign);
-              }
-              // TODO: Add handlers for other button actions like 'Claim', 'Withdraw'
-            }}
-          >
-            {status.btnText}
-          </Button>
+          {status.btnText === 'Connect Wallet' ? (
+            <CustomWalletButton className="w-full" />
+          ) : (
+            <Button
+              className="w-full cursor-pointer"
+              variant={status.btnText === 'Contribute' ? 'default' : 'outline'}
+              disabled={status.disabled}
+              onClick={() => {
+                if (status.btnText === 'Contribute') {
+                  onContribute(campaign);
+                }
+                if (
+                  status.btnText === 'Claim' ||
+                  status.btnText === 'Withdraw'
+                ) {
+                  console.log('Claiming campaign', campaign);
+                  onClaim(campaign);
+                }
+              }}
+            >
+              {status.btnText}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>

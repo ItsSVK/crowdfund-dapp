@@ -115,7 +115,7 @@ export function FilterSection({
     },
   ];
 
-  if (!connected || campaigns.length === 0) {
+  if (campaigns.length === 0) {
     return null;
   }
 
@@ -176,7 +176,9 @@ export function FilterSection({
           <div className="text-center mb-4">
             <h3 className="text-lg font-semibold mb-1">My Activity</h3>
             <p className="text-sm text-muted-foreground">
-              View your campaigns & contributions
+              {connected
+                ? 'View your campaigns & contributions'
+                : 'Connect wallet to view your activity'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 justify-center">
@@ -184,25 +186,27 @@ export function FilterSection({
               return (
                 <motion.button
                   key={option.label}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onUserFilterChange(option.label as UserFilter)}
-                  disabled={!publicKey}
+                  whileHover={{ scale: connected ? 1.02 : 1 }}
+                  whileTap={{ scale: connected ? 0.98 : 1 }}
+                  onClick={() =>
+                    connected && onUserFilterChange(option.label as UserFilter)
+                  }
+                  disabled={!connected}
                   className={`
                     relative overflow-hidden rounded-full px-4 py-2 transition-all duration-300 border text-sm font-medium
                     ${
-                      userFilter === option.label
+                      userFilter === option.label && connected
                         ? `bg-gradient-to-r ${option.color} text-white shadow-lg border-transparent`
-                        : !publicKey
+                        : !connected
                         ? 'bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50'
                         : 'bg-card hover:bg-accent border-border hover:border-primary/50'
                     }
                   `}
                 >
                   <span className="relative z-10">
-                    {option.label} ({option.count})
+                    {option.label} ({connected ? option.count : '?'})
                   </span>
-                  {userFilter === option.label && (
+                  {userFilter === option.label && connected && (
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"
                       initial={{ x: '-100%' }}
