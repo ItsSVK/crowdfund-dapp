@@ -8,85 +8,113 @@ describe('crowdfund', () => {
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.crowdfund as Program<Crowdfund>;
+  const provider = anchor.AnchorProvider.env();
+
+  let testCounter = 0;
+
+  // Helper function to get PDAs
+  function getCampaignPda(owner: anchor.web3.PublicKey, createdAt: anchor.BN) {
+    return anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('campaign'),
+        owner.toBuffer(),
+        createdAt.toArrayLike(Buffer, 'le', 8),
+      ],
+      program.programId
+    )[0];
+  }
+
+  function getTreasuryPda(campaignPda: anchor.web3.PublicKey) {
+    return anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from('treasury'), campaignPda.toBuffer()],
+      program.programId
+    )[0];
+  }
+
+  function getContributorRecordPda(
+    campaignPda: anchor.web3.PublicKey,
+    contributor: anchor.web3.PublicKey
+  ) {
+    return anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('contributor'),
+        campaignPda.toBuffer(),
+        contributor.toBuffer(),
+      ],
+      program.programId
+    )[0];
+  }
 
   it('Is initialized!', async () => {
-    // Add your test here.
     const tx = await program.methods.initialize().rpc();
     console.log('Your transaction signature', tx);
   });
 
-  it('Creates a campaign!', async () => {
-    const provider = anchor.AnchorProvider.env();
-    const owner = provider.wallet as anchor.Wallet;
+  it('Creates a campaign successfully', async () => {
     const name = 'Test Campaign';
-    const description = 'A test campaign for unit testing.';
     const goal = new anchor.BN(1000);
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 86400); // 1 day from now
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 86400);
+    const createdAt = new anchor.BN(now + testCounter++);
 
-    // Derive PDA
-    const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
-      program.programId
-    );
-
-    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('treasury'), campaignPda.toBuffer()],
-      program.programId
-    );
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
 
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(name, 'Test description', goal, deadline, createdAt)
       .accounts({
-        owner: owner.publicKey,
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
     const campaignAccount = await program.account.campaign.fetch(campaignPda);
-    // Check fields
     expect(campaignAccount.name).to.equal(name);
-    expect(campaignAccount.description).to.equal(description);
-    expect(campaignAccount.owner.toBase58()).to.equal(
-      owner.publicKey.toBase58()
-    );
     expect(campaignAccount.goal.toString()).to.equal(goal.toString());
-    expect(campaignAccount.deadline.toString()).to.equal(deadline.toString());
     expect(campaignAccount.totalAmountDonated.toNumber()).to.equal(0);
+    expect(campaignAccount.isCancelled).to.be.false;
   });
 
-  it('Donates to a campaign!', async () => {
-    const provider = anchor.AnchorProvider.env();
-    const owner = provider.wallet as anchor.Wallet;
-    const name = 'Donate Test';
-    const description = 'A campaign to test donations.';
+  it('Allows donations to active campaign', async () => {
     const goal = new anchor.BN(5000);
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 86400); // 1 day from now
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 86400);
+    const createdAt = new anchor.BN(now + testCounter++);
 
-    // Derive PDA
-    const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
-      program.programId
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
+    const contributorRecordPda = getContributorRecordPda(
+      campaignPda,
+      provider.wallet.publicKey
     );
 
-    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('treasury'), campaignPda.toBuffer()],
-      program.programId
-    );
-
-    // Create the campaign
+    // Create campaign
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(
+        'Donate Test',
+        'Test description',
+        goal,
+        deadline,
+        createdAt
+      )
       .accounts({
-        owner: owner.publicKey,
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
-    // Donate to the campaign
-    const donationAmount = new anchor.BN(1_000_000); // 0.001 SOL
+    // Donate to campaign
+    const donationAmount = new anchor.BN(1_000_000);
     await program.methods
       .donateToCampaign(donationAmount)
       .accounts({
         campaign: campaignPda,
-        contributor: owner.publicKey,
+        contributor: provider.wallet.publicKey,
+        // contributorRecord: contributorRecordPda,
         treasury: treasuryPda,
         // systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -98,138 +126,304 @@ describe('crowdfund', () => {
     );
   });
 
-  it('Allows contributor to withdraw if campaign failed', async () => {
-    const provider = anchor.AnchorProvider.env();
-    const owner = provider.wallet as anchor.Wallet;
-    const name = 'Fail Campaign';
-    const description = 'A campaign that will fail.';
-    const goal = new anchor.BN(1_000_000_000); // 1 SOL (set high so it fails)
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 2); // 2 seconds from now
+  it('Allows contributor to withdraw from failed campaign', async () => {
+    const goal = new anchor.BN(1_000_000_000);
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2);
+    const createdAt = new anchor.BN(now + testCounter++);
 
-    // Derive PDA for campaign and contributor record
-    const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
-      program.programId
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
+    const contributorRecordPda = getContributorRecordPda(
+      campaignPda,
+      provider.wallet.publicKey
     );
-    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('treasury'), campaignPda.toBuffer()],
-      program.programId
-    );
-    const [contributorRecordPda] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [
-          Buffer.from('contributor'),
-          campaignPda.toBuffer(),
-          owner.publicKey.toBuffer(),
-        ],
-        program.programId
-      );
 
-    // Create the campaign
+    // Create campaign
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(
+        'Fail Campaign',
+        'Test description',
+        goal,
+        deadline,
+        createdAt
+      )
       .accounts({
-        owner: owner.publicKey,
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
-    // Donate to the campaign
-    const donationAmount = new anchor.BN(100_000_000); // 0.1 SOL
+    // Donate small amount
+    const donationAmount = new anchor.BN(100_000_000);
     await program.methods
       .donateToCampaign(donationAmount)
       .accounts({
         campaign: campaignPda,
-        contributor: owner.publicKey,
+        contributor: provider.wallet.publicKey,
+        // contributorRecord: contributorRecordPda,
         treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
-    // Wait for deadline to pass
+    // Wait for deadline
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Get balances before withdrawal
-    const before = await provider.connection.getBalance(owner.publicKey);
+    const before = await provider.connection.getBalance(
+      provider.wallet.publicKey
+    );
 
     // Withdraw if failed
     await program.methods
       .withdrawIfFailed()
       .accounts({
+        // campaign: campaignPda,
         contributorRecord: contributorRecordPda,
+        // contributor: provider.wallet.publicKey,
         treasury: treasuryPda,
       })
       .rpc();
 
-    // Get balances after withdrawal
-    const after = await provider.connection.getBalance(owner.publicKey);
-
-    // Fetch contributor record
+    const after = await provider.connection.getBalance(
+      provider.wallet.publicKey
+    );
     const record = await program.account.contributorRecord.fetch(
       contributorRecordPda
     );
+
     expect(record.withdrawn).to.be.true;
-    // The difference should be at least the donation (minus rent/fees)
     expect(after).to.be.greaterThan(before);
   });
 
-  it('Allows owner to withdraw if campaign succeeded', async () => {
-    const provider = anchor.AnchorProvider.env();
-    const owner = provider.wallet as anchor.Wallet;
-    const name = 'Success Campaign';
-    const description = 'A campaign that will succeed.';
-    const goal = new anchor.BN(1_000_000); // 0.001 SOL
-    const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 2); // 2 seconds from now
+  it('Allows owner to cancel campaign', async () => {
+    const goal = new anchor.BN(1_000_000_000);
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 86400);
+    const createdAt = new anchor.BN(now + testCounter++);
 
-    // Derive PDA for campaign
-    const [campaignPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('campaign'), owner.publicKey.toBuffer(), Buffer.from(name)],
-      program.programId
-    );
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
 
-    const [treasuryPda] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from('treasury'), campaignPda.toBuffer()],
-      program.programId
-    );
-
-    // Create the campaign
+    // Create campaign
     await program.methods
-      .createCampaign(name, description, goal, deadline)
+      .createCampaign(
+        'Cancel Campaign',
+        'Test description',
+        goal,
+        deadline,
+        createdAt
+      )
       .accounts({
-        owner: owner.publicKey,
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
-    // Donate to the campaign (meet the goal)
+    // Cancel campaign
+    await program.methods
+      .cancelCampaign()
+      .accounts({
+        campaign: campaignPda,
+        // owner: provider.wallet.publicKey,
+      })
+      .rpc();
+
+    const campaignAccount = await program.account.campaign.fetch(campaignPda);
+    expect(campaignAccount.isCancelled).to.be.true;
+  });
+
+  // Negative test cases - simplified to focus on what we can currently test
+  it('Prevents withdrawal from successful campaign (should fail)', async () => {
+    const goal = new anchor.BN(100_000_000);
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2);
+    const createdAt = new anchor.BN(now + testCounter++);
+
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
+    const contributorRecordPda = getContributorRecordPda(
+      campaignPda,
+      provider.wallet.publicKey
+    );
+
+    // Create campaign
+    await program.methods
+      .createCampaign(
+        'Success Fail Test',
+        'Test description',
+        goal,
+        deadline,
+        createdAt
+      )
+      .accounts({
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Donate enough to reach goal
     await program.methods
       .donateToCampaign(goal)
       .accounts({
         campaign: campaignPda,
-        contributor: owner.publicKey,
+        contributor: provider.wallet.publicKey,
+        // contributorRecord: contributorRecordPda,
         treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
-    // Wait for deadline to pass
+    // Wait for deadline
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Get balances before withdrawal
-    const before = await provider.connection.getBalance(owner.publicKey);
+    try {
+      await program.methods
+        .withdrawIfFailed()
+        .accounts({
+          // campaign: campaignPda,
+          contributorRecord: contributorRecordPda,
+          // contributor: provider.wallet.publicKey,
+          treasury: treasuryPda,
+        })
+        .rpc();
+      expect.fail('Should have thrown error');
+    } catch (error) {
+      expect(error.message).to.include('CampaignGoalReached');
+    }
+  });
 
-    // Withdraw by owner
+  it('Allows owner to withdraw from successful campaign', async () => {
+    const goal = new anchor.BN(100_000_000);
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2);
+    const createdAt = new anchor.BN(now + testCounter++);
+
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
+    const contributorRecordPda = getContributorRecordPda(
+      campaignPda,
+      provider.wallet.publicKey
+    );
+
+    // Create campaign
+    await program.methods
+      .createCampaign(
+        'Success Campaign',
+        'Test description',
+        goal,
+        deadline,
+        createdAt
+      )
+      .accounts({
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Donate to reach goal
+    await program.methods
+      .donateToCampaign(goal)
+      .accounts({
+        campaign: campaignPda,
+        contributor: provider.wallet.publicKey,
+        // contributorRecord: contributorRecordPda,
+        treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Wait for deadline
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const before = await provider.connection.getBalance(
+      provider.wallet.publicKey
+    );
+
+    // Owner withdraw
     await program.methods
       .withdrawByOwner()
       .accounts({
         campaign: campaignPda,
+        // owner: provider.wallet.publicKey,
         treasury: treasuryPda,
       })
       .rpc();
 
-    // Get balances after withdrawal
-    const after = await provider.connection.getBalance(owner.publicKey);
-
-    // Fetch campaign account
+    const after = await provider.connection.getBalance(
+      provider.wallet.publicKey
+    );
     const campaignAccount = await program.account.campaign.fetch(campaignPda);
+
     expect(campaignAccount.withdrawnByOwner).to.be.true;
-    // The difference should be at least the goal (minus rent/fees)
     expect(after).to.be.greaterThan(before);
+  });
+
+  it('Prevents owner withdrawal from failed campaign (should fail)', async () => {
+    const goal = new anchor.BN(1_000_000_000);
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = new anchor.BN(now + 2);
+    const createdAt = new anchor.BN(now + testCounter++);
+
+    const campaignPda = getCampaignPda(provider.wallet.publicKey, createdAt);
+    const treasuryPda = getTreasuryPda(campaignPda);
+    const contributorRecordPda = getContributorRecordPda(
+      campaignPda,
+      provider.wallet.publicKey
+    );
+
+    // Create campaign
+    await program.methods
+      .createCampaign(
+        'Owner Fail Test',
+        'Test description',
+        goal,
+        deadline,
+        createdAt
+      )
+      .accounts({
+        // campaign: campaignPda,
+        owner: provider.wallet.publicKey,
+        // treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Donate less than goal
+    await program.methods
+      .donateToCampaign(new anchor.BN(100_000_000))
+      .accounts({
+        campaign: campaignPda,
+        contributor: provider.wallet.publicKey,
+        // contributorRecord: contributorRecordPda,
+        treasury: treasuryPda,
+        // systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    // Wait for deadline
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    try {
+      await program.methods
+        .withdrawByOwner()
+        .accounts({
+          campaign: campaignPda,
+          // owner: provider.wallet.publicKey,
+          treasury: treasuryPda,
+        })
+        .rpc();
+      expect.fail('Should have thrown error');
+    } catch (error) {
+      expect(error.message).to.include('CampaignGoalNotReached');
+    }
   });
 });

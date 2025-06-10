@@ -1,0 +1,31 @@
+<svg width="192" height="192" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+    <linearGradient id="coinGradient192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#EAB308" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main circle -->
+  <circle cx="20" cy="20" r="18" fill="url(#logoGradient192)" stroke="white" stroke-width="2"/>
+  
+  <!-- Central target/goal -->
+  <circle cx="20" cy="20" r="6" fill="white" opacity="0.9"/>
+  <circle cx="20" cy="20" r="3" fill="url(#logoGradient192)"/>
+  
+  <!-- Surrounding funding sources -->
+  <circle cx="12" cy="12" r="2" fill="url(#coinGradient192)" opacity="0.8"/>
+  <circle cx="28" cy="12" r="2" fill="url(#coinGradient192)" opacity="0.8"/>
+  <circle cx="12" cy="28" r="2" fill="url(#coinGradient192)" opacity="0.8"/>
+  <circle cx="28" cy="28" r="2" fill="url(#coinGradient192)" opacity="0.8"/>
+  
+  <!-- Connection lines showing funds flowing to center -->
+  <line x1="14" y1="14" x2="17" y2="17" stroke="white" stroke-width="1.5" opacity="0.7"/>
+  <line x1="26" y1="14" x2="23" y2="17" stroke="white" stroke-width="1.5" opacity="0.7"/>
+  <line x1="14" y1="26" x2="17" y2="23" stroke="white" stroke-width="1.5" opacity="0.7"/>
+  <line x1="26" y1="26" x2="23" y2="23" stroke="white" stroke-width="1.5" opacity="0.7"/>
+</svg> 
