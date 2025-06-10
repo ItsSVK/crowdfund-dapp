@@ -87,10 +87,10 @@ The platform consists of two main components working together:
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ • React/Next.js │    │ • WebSocket      │    │ • Rust/Anchor   │
-│ • TypeScript    │    │ • HTTP RPC       │    │ • Program PDAs  │
-│ • Tailwind CSS  │    │ • Connection     │    │ • State Mgmt    │
-│ • Wallet Adapt. │    │   Management     │    │ • Security      │
+│ • React/Next.js │    │ • HTTP RPC       │    │ • Rust/Anchor   │
+│ • TypeScript    │    │ • Connection     │    │ • Program PDAs  │
+│ • Tailwind CSS  │    │   Management     │    │ • State Mgmt    │
+│ • Wallet Adapt. │    │                  │    │ • Security      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
@@ -100,7 +100,9 @@ The platform consists of two main components working together:
 
 The platform implements a sophisticated three-way withdrawal system ensuring fair fund distribution:
 
-![Campaign Flow Diagram](./app/diagram.svg)
+<div align="center">
+  <img src="./diagram.svg" alt="Campaign Flow Diagram" width="600" />
+</div>
 
 ### **Campaign States & Actions**
 
@@ -244,23 +246,27 @@ anchor localnet                # Start local test validator
 **Frontend (`.env.local`):**
 
 ```env
-NEXT_PUBLIC_SOLANA_NETWORK=devnet
 NEXT_PUBLIC_RPC_ENDPOINT=https://api.devnet.solana.com
-NEXT_PUBLIC_PROGRAM_ID=your_program_id_here
 ```
 
 **Smart Contract (`Anchor.toml`):**
 
 ```toml
+[toolchain]
+package_manager = "yarn"
+
 [features]
-seeds = false
+resolution = true
 skip-lint = false
 
 [programs.devnet]
-crowdfund = "your_program_id_here"
+crowdfund = "CyAAhAthb87MH3MQzcj8gAWTTaTkQ6cqboTYauMjuxch"
 
 [registry]
 url = "https://api.apr.dev"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 ```
 
 ---
