@@ -9,6 +9,7 @@ import Provider from '@/provider';
 import Navbar from '@/components/pages/navbar';
 import { CampaignProvider } from '@/contexts/CampaignContext';
 import PWAInstaller from '@/components/pwa-installer';
+import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -77,7 +78,7 @@ export const metadata: Metadata = {
   },
   verification: {
     // Add your verification tokens here when you have them
-    // google: 'your-google-verification-token',
+    google: 'googlef9998bf8f02c438b.html',
     // yandex: 'your-yandex-verification-token',
   },
 };
@@ -96,6 +97,7 @@ export default function RootLayout({
               <Navbar />
               {children}
               <PWAInstaller />
+              <Analytics />
             </div>
           </CampaignProvider>
         </Provider>
