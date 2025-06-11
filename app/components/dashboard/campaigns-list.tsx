@@ -19,7 +19,7 @@ interface CampaignsListProps {
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
   onCreateCampaign: () => void;
-  getCampaignStatus: (campaign: Campaign) => CampaignStatus;
+  getCampaignStatus: (campaign: Campaign) => CampaignStatus | null;
 }
 
 function CampaignsListComponent({
@@ -42,7 +42,7 @@ function CampaignsListComponent({
       let passesStatusFilter = true;
       if (activeFilter !== ActiveFilter.All) {
         const status = campaign.account.campaignStatus();
-        passesStatusFilter = status.status === activeFilter;
+        passesStatusFilter = status?.status === activeFilter;
       }
 
       // Then apply user filter (only if wallet connected and filter selected)
@@ -52,17 +52,18 @@ function CampaignsListComponent({
 
         switch (userFilter) {
           case UserFilter.MyCampaigns:
-            passesUserFilter = status.amITheOwner;
+            passesUserFilter = status?.amITheOwner ?? false;
             break;
           case UserFilter.Contributed:
             // Check if user has contributed using the campaignStatus logic
-            passesUserFilter = status.isContributed;
+            passesUserFilter = status?.isContributed ?? false;
             break;
           case UserFilter.Claimable:
             // Campaigns where user can claim (failed campaigns where user contributed)
             passesUserFilter =
-              (status.isContributed && !status.isGoalReached) ||
-              (status.amITheOwner && status.isGoalReached);
+              (status?.isContributed && !status?.isGoalReached) ||
+              (status?.amITheOwner && status?.isGoalReached) ||
+              false;
             break;
           default:
             passesUserFilter = true;

@@ -3,7 +3,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { useAnchorProgram } from '@/hooks/useAnchorProgram';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Campaign, ContributorRecord } from '@/types/campaign';
+import { ActiveFilter, Campaign, ContributorRecord } from '@/types/campaign';
 import { PublicKey } from '@solana/web3.js';
 import { errorMessages } from '@/lib/errorMessages';
 import { toast } from 'sonner';
@@ -42,6 +42,143 @@ function campaignDataChanged(
   );
 }
 
+function getFormattedCampaigns(
+  campaignAccounts: Campaign[],
+  userContributions: ContributorRecord[],
+  publicKey: PublicKey | null
+) {
+  return campaignAccounts
+    .map((campaign: Campaign) => ({
+      publicKey: campaign.publicKey,
+      account: {
+        name: campaign.account.name,
+        description: campaign.account.description,
+        owner: campaign.account.owner,
+        goal: campaign.account.goal,
+        deadline: campaign.account.deadline,
+        totalAmountDonated: campaign.account.totalAmountDonated,
+        withdrawnByOwner: campaign.account.withdrawnByOwner,
+        treasury: campaign.account.treasury,
+        createdAt: campaign.account.createdAt,
+        isCancelled: campaign.account.isCancelled,
+        campaignStatus: () => {
+          const contributorRecord = userContributions.find(
+            (contribution: ContributorRecord) =>
+              contribution.account.campaign.toBase58() ===
+              campaign.publicKey.toBase58()
+          );
+
+          const isContributed = publicKey ? !!contributorRecord : false;
+
+          const isContributionWithdrawn =
+            !!contributorRecord?.account.withdrawn;
+
+          const isGoalReached =
+            campaign.account.totalAmountDonated.toNumber() >=
+            campaign.account.goal.toNumber();
+          const amITheOwner = publicKey
+            ? campaign.account.owner.toBase58() === publicKey.toBase58()
+            : false;
+
+          const isAdminWithdrawn = campaign.account.withdrawnByOwner;
+
+          // Handle cases based on connection status
+          if (!publicKey) return null;
+
+          // Connected - show normal logic
+          if (campaign.account.isCancelled)
+            return {
+              status: ActiveFilter.Cancelled,
+              color: 'bg-red-500',
+              btnText: isContributed
+                ? isContributionWithdrawn
+                  ? 'Already Claimed'
+                  : 'Claim'
+                : 'Canceled',
+              disabled: isContributed
+                ? isContributionWithdrawn
+                  ? true
+                  : false
+                : true,
+              isContributed: !!isContributed,
+              isGoalReached,
+              amITheOwner,
+              isAdminWithdrawn,
+              isContributionWithdrawn,
+              amountToBeCollected:
+                contributorRecord?.account.amountDonated.toNumber() ?? 0,
+            };
+          if (campaign.account.deadline?.toNumber() >= Date.now() / 1000)
+            return {
+              status: ActiveFilter.Active,
+              color: 'bg-blue-500',
+              btnText: 'Contribute',
+              disabled: false,
+              isContributed: !!isContributed,
+              isGoalReached,
+              amITheOwner,
+              isAdminWithdrawn,
+              isContributionWithdrawn,
+              amountToBeCollected: 0,
+            };
+          if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
+            return {
+              status: ActiveFilter.Past,
+              color: 'bg-emerald-500',
+              btnText: isGoalReached
+                ? amITheOwner
+                  ? isAdminWithdrawn
+                    ? 'Already Withdrawn'
+                    : 'Withdraw'
+                  : 'Completed'
+                : isContributed
+                ? isContributionWithdrawn
+                  ? 'Already Claimed'
+                  : 'Claim'
+                : 'Completed',
+              disabled: isGoalReached
+                ? amITheOwner
+                  ? isAdminWithdrawn
+                    ? true
+                    : false
+                  : true
+                : isContributed
+                ? isContributionWithdrawn
+                  ? true
+                  : false
+                : true,
+              isContributed: !!isContributed,
+              isGoalReached,
+              amITheOwner,
+              isAdminWithdrawn,
+              isContributionWithdrawn,
+              amountToBeCollected: isGoalReached
+                ? campaign.account.totalAmountDonated.toNumber()
+                : isContributed
+                ? contributorRecord?.account.amountDonated.toNumber()
+                : 0,
+            };
+          return {
+            status: ActiveFilter.Active,
+            color: 'bg-blue-500',
+            btnText: 'Contribute',
+            disabled: false,
+            isContributed: !!isContributed,
+            isGoalReached,
+            amITheOwner,
+            isAdminWithdrawn,
+            isContributionWithdrawn,
+            amountToBeCollected: 0,
+          };
+        },
+      },
+    }))
+    .sort(
+      (a: Campaign, b: Campaign) =>
+        b.account.createdAt.toNumber() - a.account.createdAt.toNumber()
+    );
+}
+
 export function CampaignProvider({ children }: { children: React.ReactNode }) {
   const { program } = useAnchorProgram();
   const { publicKey, connected } = useWallet();
@@ -78,141 +215,11 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Use the same formatting logic as refreshCampaigns
-        const formattedCampaigns = campaignAccounts
-          .map((campaign: Campaign) => ({
-            publicKey: campaign.publicKey,
-            account: {
-              name: campaign.account.name,
-              description: campaign.account.description,
-              owner: campaign.account.owner,
-              goal: campaign.account.goal,
-              deadline: campaign.account.deadline,
-              totalAmountDonated: campaign.account.totalAmountDonated,
-              withdrawnByOwner: campaign.account.withdrawnByOwner,
-              treasury: campaign.account.treasury,
-              createdAt: campaign.account.createdAt,
-              isCancelled: campaign.account.isCancelled,
-              campaignStatus: () => {
-                const isContributed = publicKey
-                  ? userContributions.find(
-                      (contribution: ContributorRecord) =>
-                        contribution.account.campaign.toBase58() ===
-                        campaign.publicKey.toBase58()
-                    )
-                  : false;
-                const isGoalReached =
-                  campaign.account.totalAmountDonated.toNumber() >=
-                  campaign.account.goal.toNumber();
-                const amITheOwner = publicKey
-                  ? campaign.account.owner.toBase58() === publicKey.toBase58()
-                  : false;
-
-                // Handle cases based on connection status
-                if (!publicKey) {
-                  // Not connected - show generic states with "Connect Wallet" action
-                  if (campaign.account.isCancelled)
-                    return {
-                      status: 'Cancelled',
-                      color: 'bg-red-500',
-                      btnText: 'Connect Wallet',
-                      disabled: false,
-                      isContributed: false,
-                      isGoalReached,
-                      amITheOwner: false,
-                    };
-                  if (
-                    campaign.account.deadline?.toNumber() >=
-                    Date.now() / 1000
-                  )
-                    return {
-                      status: 'Active',
-                      color: 'bg-blue-500',
-                      btnText: 'Connect Wallet',
-                      disabled: false,
-                      isContributed: false,
-                      isGoalReached,
-                      amITheOwner: false,
-                    };
-                  if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
-                    return {
-                      status: 'Past',
-                      color: 'bg-emerald-500',
-                      btnText: 'Connect Wallet',
-                      disabled: false,
-                      isContributed: false,
-                      isGoalReached,
-                      amITheOwner: false,
-                    };
-                  return {
-                    status: 'Active',
-                    color: 'bg-blue-500',
-                    btnText: 'Connect Wallet',
-                    disabled: false,
-                    isContributed: false,
-                    isGoalReached,
-                    amITheOwner: false,
-                  };
-                }
-
-                // Connected - show normal logic
-                if (campaign.account.isCancelled)
-                  return {
-                    status: 'Cancelled',
-                    color: 'bg-red-500',
-                    btnText: isContributed ? 'Claim' : 'Canceled',
-                    disabled: !isContributed,
-                    isContributed: !!isContributed,
-                    isGoalReached,
-                    amITheOwner,
-                  };
-                if (campaign.account.deadline?.toNumber() >= Date.now() / 1000)
-                  return {
-                    status: 'Active',
-                    color: 'bg-blue-500',
-                    btnText: 'Contribute',
-                    disabled: false,
-                    isContributed: !!isContributed,
-                    isGoalReached,
-                    amITheOwner,
-                  };
-                if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
-                  return {
-                    status: 'Past',
-                    color: 'bg-emerald-500',
-                    btnText: isGoalReached
-                      ? amITheOwner
-                        ? 'Withdraw'
-                        : 'Completed'
-                      : isContributed
-                      ? 'Claim'
-                      : 'Completed',
-                    disabled: isGoalReached
-                      ? amITheOwner
-                        ? false
-                        : true
-                      : isContributed
-                      ? false
-                      : true,
-                    isContributed: !!isContributed,
-                    isGoalReached,
-                    amITheOwner,
-                  };
-                return {
-                  status: 'Active',
-                  color: 'bg-blue-500',
-                  btnText: 'Contribute',
-                  disabled: false,
-                  isContributed: !!isContributed,
-                  isGoalReached,
-                  amITheOwner,
-                };
-              },
-            },
-          }))
-          .sort(
-            (a: Campaign, b: Campaign) =>
-              b.account.createdAt.toNumber() - a.account.createdAt.toNumber()
-          );
+        const formattedCampaigns = getFormattedCampaigns(
+          campaignAccounts,
+          userContributions,
+          publicKey
+        );
 
         // console.log('Campaigns Updated (initial/refresh)...');
         setCampaigns(formattedCampaigns);
@@ -310,139 +317,11 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
         ]);
       }
 
-      const formattedCampaigns = campaignAccounts
-        .map((campaign: Campaign) => ({
-          publicKey: campaign.publicKey,
-          account: {
-            name: campaign.account.name,
-            description: campaign.account.description,
-            owner: campaign.account.owner,
-            goal: campaign.account.goal,
-            deadline: campaign.account.deadline,
-            totalAmountDonated: campaign.account.totalAmountDonated,
-            withdrawnByOwner: campaign.account.withdrawnByOwner,
-            treasury: campaign.account.treasury,
-            createdAt: campaign.account.createdAt,
-            isCancelled: campaign.account.isCancelled,
-            campaignStatus: () => {
-              const isContributed = publicKey
-                ? userContributions.find(
-                    (contribution: ContributorRecord) =>
-                      contribution.account.campaign.toBase58() ===
-                      campaign.publicKey.toBase58()
-                  )
-                : false;
-              const isGoalReached =
-                campaign.account.totalAmountDonated.toNumber() >=
-                campaign.account.goal.toNumber();
-              const amITheOwner = publicKey
-                ? campaign.account.owner.toBase58() === publicKey.toBase58()
-                : false;
-
-              // Handle cases based on connection status
-              if (!publicKey) {
-                // Not connected - show generic states with "Connect Wallet" action
-                if (campaign.account.isCancelled)
-                  return {
-                    status: 'Cancelled',
-                    color: 'bg-red-500',
-                    btnText: 'Connect Wallet',
-                    disabled: false,
-                    isContributed: false,
-                    isGoalReached,
-                    amITheOwner: false,
-                  };
-                if (campaign.account.deadline?.toNumber() >= Date.now() / 1000)
-                  return {
-                    status: 'Active',
-                    color: 'bg-blue-500',
-                    btnText: 'Connect Wallet',
-                    disabled: false,
-                    isContributed: false,
-                    isGoalReached,
-                    amITheOwner: false,
-                  };
-                if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
-                  return {
-                    status: 'Past',
-                    color: 'bg-emerald-500',
-                    btnText: 'Connect Wallet',
-                    disabled: false,
-                    isContributed: false,
-                    isGoalReached,
-                    amITheOwner: false,
-                  };
-                return {
-                  status: 'Active',
-                  color: 'bg-blue-500',
-                  btnText: 'Connect Wallet',
-                  disabled: false,
-                  isContributed: false,
-                  isGoalReached,
-                  amITheOwner: false,
-                };
-              }
-
-              // Connected - show normal logic
-              if (campaign.account.isCancelled)
-                return {
-                  status: 'Cancelled',
-                  color: 'bg-red-500',
-                  btnText: isContributed ? 'Claim' : 'Canceled',
-                  disabled: !isContributed,
-                  isContributed: !!isContributed,
-                  isGoalReached,
-                  amITheOwner,
-                };
-              if (campaign.account.deadline?.toNumber() >= Date.now() / 1000)
-                return {
-                  status: 'Active',
-                  color: 'bg-blue-500',
-                  btnText: 'Contribute',
-                  disabled: false,
-                  isContributed: !!isContributed,
-                  isGoalReached,
-                  amITheOwner,
-                };
-              if (campaign.account.deadline?.toNumber() < Date.now() / 1000)
-                return {
-                  status: 'Past',
-                  color: 'bg-emerald-500',
-                  btnText: isGoalReached
-                    ? amITheOwner
-                      ? 'Withdraw'
-                      : 'Completed'
-                    : isContributed
-                    ? 'Claim'
-                    : 'Completed',
-                  disabled: isGoalReached
-                    ? amITheOwner
-                      ? false
-                      : true
-                    : isContributed
-                    ? false
-                    : true,
-                  isContributed: !!isContributed,
-                  isGoalReached,
-                  amITheOwner,
-                };
-              return {
-                status: 'Active',
-                color: 'bg-blue-500',
-                btnText: 'Contribute',
-                disabled: false,
-                isContributed: !!isContributed,
-                isGoalReached,
-                amITheOwner,
-              };
-            },
-          },
-        }))
-        // Sort campaigns by creation time (newest first)
-        .sort(
-          (a: Campaign, b: Campaign) =>
-            b.account.createdAt.toNumber() - a.account.createdAt.toNumber()
-        );
+      const formattedCampaigns = getFormattedCampaigns(
+        campaignAccounts,
+        userContributions,
+        publicKey
+      );
 
       // Smart update: only update campaigns that have actually changed
       setCampaigns(currentCampaigns => {

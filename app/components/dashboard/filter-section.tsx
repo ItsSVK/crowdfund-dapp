@@ -14,7 +14,7 @@ interface FilterSectionProps {
   userFilter: UserFilter | null;
   onStatusFilterChange: (filter: ActiveFilter) => void;
   onUserFilterChange: (filter: UserFilter) => void;
-  getCampaignStatus: (campaign: Campaign) => CampaignStatus;
+  getCampaignStatus: (campaign: Campaign) => CampaignStatus | null;
 }
 
 export function FilterSection({
@@ -39,7 +39,7 @@ export function FilterSection({
     {
       label: ActiveFilter.Active,
       count: campaigns.filter(
-        c => getCampaignStatus(c).status === ActiveFilter.Active
+        c => getCampaignStatus(c)?.status === ActiveFilter.Active
       ).length,
       color: 'from-blue-500 to-cyan-500',
       textColor: 'text-white',
@@ -48,7 +48,7 @@ export function FilterSection({
     {
       label: ActiveFilter.Past,
       count: campaigns.filter(
-        c => getCampaignStatus(c).status === ActiveFilter.Past
+        c => getCampaignStatus(c)?.status === ActiveFilter.Past
       ).length,
       color: 'from-emerald-500 to-teal-500',
       textColor: 'text-white',
@@ -57,7 +57,7 @@ export function FilterSection({
     {
       label: ActiveFilter.Cancelled,
       count: campaigns.filter(
-        c => getCampaignStatus(c).status === ActiveFilter.Cancelled
+        c => getCampaignStatus(c)?.status === ActiveFilter.Cancelled
       ).length,
       color: 'from-red-500 to-pink-500',
       textColor: 'text-white',
@@ -85,7 +85,7 @@ export function FilterSection({
       count: publicKey
         ? campaigns.filter(c => {
             const status = getCampaignStatus(c);
-            return status.amITheOwner;
+            return status?.amITheOwner;
           }).length
         : 0,
       color: 'from-indigo-500 to-purple-600',
@@ -95,7 +95,7 @@ export function FilterSection({
       count: publicKey
         ? campaigns.filter(c => {
             const status = getCampaignStatus(c);
-            return status.isContributed;
+            return status?.isContributed;
           }).length
         : 0,
       color: 'from-orange-500 to-red-500',
@@ -106,8 +106,8 @@ export function FilterSection({
         ? campaigns.filter(c => {
             const status = getCampaignStatus(c);
             return (
-              (status.isContributed && !status.isGoalReached) ||
-              (status.amITheOwner && status.isGoalReached)
+              (status?.isContributed && !status?.isGoalReached) ||
+              (status?.amITheOwner && status?.isGoalReached)
             );
           }).length
         : 0,

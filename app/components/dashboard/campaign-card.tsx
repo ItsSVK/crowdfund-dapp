@@ -13,7 +13,7 @@ interface CampaignCardProps {
   campaign: Campaign;
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
-  getCampaignStatus: (campaign: Campaign) => CampaignStatus;
+  getCampaignStatus: (campaign: Campaign) => CampaignStatus | null;
   deadlineTimestamp: number;
 }
 
@@ -77,8 +77,8 @@ function CampaignCardComponent({
             <CardTitle className="text-lg line-clamp-2">
               {campaign.account.name}
             </CardTitle>
-            <Badge className={`${status.color} text-white text-xs`}>
-              {status.status}
+            <Badge className={`${status?.color} text-white text-xs`}>
+              {status?.status}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground line-clamp-2">
@@ -181,7 +181,7 @@ function CampaignCardComponent({
           </div>
 
           {/* Action Button */}
-          {status.btnText === 'Connect Wallet' ? (
+          {status === null ? (
             <CustomWalletButton className="w-full" />
           ) : (
             <Button
