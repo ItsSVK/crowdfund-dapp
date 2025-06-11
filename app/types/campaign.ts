@@ -15,7 +15,7 @@ interface CampaignAccount {
 
 export interface Campaign {
   publicKey: anchor.web3.PublicKey;
-  account: CampaignAccount & { campaignStatus: () => CampaignStatus };
+  account: CampaignAccount & { campaignStatus: () => CampaignStatus | null };
 }
 
 export interface ContributorRecord {
@@ -24,17 +24,21 @@ export interface ContributorRecord {
     campaign: anchor.web3.PublicKey;
     contributor: anchor.web3.PublicKey;
     amountDonated: anchor.BN;
+    withdrawn: boolean;
   };
 }
 
 export interface CampaignStatus {
-  status: string;
+  status: ActiveFilter;
   color: string;
   btnText: string;
   disabled: boolean;
   isContributed: boolean;
   isGoalReached: boolean;
   amITheOwner: boolean;
+  isAdminWithdrawn: boolean;
+  isContributionWithdrawn: boolean;
+  amountToBeCollected: number;
 }
 
 export enum ActiveFilter {

@@ -142,14 +142,27 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
           <span>
             Are you sure you want to claim your funds from this campaign?
             <br />
-            <span className="font-bold">{campaign?.account.name}</span>
+            <br />
+            <span className="text-sm">
+              Campaign:{' '}
+              <span className="font-bold">{campaign?.account.name}</span>
+              <br />
+              Amount to be collected:{' '}
+              <span className="font-bold">
+                {(
+                  (campaign?.account.campaignStatus()?.amountToBeCollected ??
+                    0) / anchor.web3.LAMPORTS_PER_SOL
+                ).toFixed(2)}{' '}
+                SOL
+              </span>
+            </span>
           </span>
         </DialogDescription>
         <DialogFooter>
           <Button
             onClick={handleProceedClaim}
             disabled={isLoading}
-            className="cursor-pointer text-white"
+            className="cursor-pointer !dark:text-white"
           >
             {isLoading ? 'Processing...' : 'Proceed'}
           </Button>

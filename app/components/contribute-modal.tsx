@@ -31,12 +31,6 @@ interface Campaign {
     withdrawnByOwner: boolean;
     treasury: anchor.web3.PublicKey;
     isCancelled: boolean;
-    campaignStatus?: () => {
-      status: string;
-      color: string;
-      btnText: string;
-      disabled: boolean;
-    };
   };
 }
 

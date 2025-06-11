@@ -3,11 +3,11 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, Wallet, TrendingUp, CheckCircle2 } from 'lucide-react';
 import * as anchor from '@coral-xyz/anchor';
-import { Campaign, CampaignStatus } from '@/types/campaign';
+import { ActiveFilter, Campaign, CampaignStatus } from '@/types/campaign';
 
 interface StatsOverviewProps {
   campaigns: Campaign[];
-  getCampaignStatus: (campaign: Campaign) => CampaignStatus;
+  getCampaignStatus: (campaign: Campaign) => CampaignStatus | null;
 }
 
 export function StatsOverview({
@@ -61,7 +61,7 @@ export function StatsOverview({
               <p className="text-2xl font-bold">
                 {
                   campaigns.filter(
-                    c => getCampaignStatus(c).status === 'Active'
+                    c => getCampaignStatus(c)?.status === ActiveFilter.Active
                   ).length
                 }
               </p>
@@ -81,8 +81,9 @@ export function StatsOverview({
                   ? Math.round(
                       (campaigns.filter(
                         c =>
-                          getCampaignStatus(c).status === 'Past' ||
-                          getCampaignStatus(c).status === 'Completed'
+                          (getCampaignStatus(c)?.status === ActiveFilter.Past &&
+                            getCampaignStatus(c)?.isGoalReached) ??
+                          false
                       ).length /
                         campaigns.length) *
                         100

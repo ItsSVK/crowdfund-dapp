@@ -77,15 +77,9 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    // Main data refresh interval - 15 seconds is optimal for blockchain data
-    // - Frequent enough to catch new donations and campaign changes
-    // - Not too aggressive to avoid unnecessary RPC calls
-    // - Deadline expiration is handled separately with 1-second precision
     const interval = setInterval(() => {
       refreshCampaigns();
-      // router.refresh();
-      // console.log('Refreshing campaigns state');
-    }, 15 * 1000); // Changed from 10 to 15 seconds
+    }, 15 * 1000);
 
     return () => clearInterval(interval);
   }, [refreshCampaigns]);
