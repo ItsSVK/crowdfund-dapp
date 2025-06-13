@@ -11,4 +11,7 @@ export const errorMessages = {
   CampaignNotCancelled: 'The campaign is not cancelled.',
   CampaignAlreadyCancelled: 'The campaign is already cancelled.',
   AccountNotInitialized: 'Account not initialized.',
+  NotOwner: 'You are not the owner of the campaign.',
+  WalletSignTransactionError:
+    'There was an error signing the transaction. Please try again.',
 };

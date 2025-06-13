@@ -190,7 +190,6 @@ export function CreateCampaignDialog({
       onOpenChange(false);
       setFormData({ name: '', description: '', goal: '', deadline: '' });
       setSelectedDate(null);
-      refreshCampaigns();
     } catch (error) {
       console.error('Full error:', error);
 
@@ -208,6 +207,7 @@ export function CreateCampaignDialog({
       }
     } finally {
       setIsLoading(false);
+      refreshCampaigns();
     }
   };
 
@@ -323,7 +323,7 @@ export function CreateCampaignDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="flex-1 cursor-pointer text-white"
+                className="flex-1 cursor-pointer dark:text-white"
                 disabled={isLoading}
               >
                 Cancel

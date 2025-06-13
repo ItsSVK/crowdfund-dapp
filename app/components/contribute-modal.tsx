@@ -101,7 +101,6 @@ export function ContributeModal({
       toast.success(`Successfully contributed ${amount} SOL!`);
       setAmount('');
       onOpenChange(false);
-      refreshCampaigns();
     } catch (error) {
       console.error('Full error:', error);
 
@@ -119,6 +118,7 @@ export function ContributeModal({
       }
     } finally {
       setIsLoading(false);
+      refreshCampaigns();
     }
   };
 
@@ -247,7 +247,7 @@ export function ContributeModal({
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="flex-1 cursor-pointer text-white"
+              className="flex-1 cursor-pointer dark:text-white"
               onClick={handleClose}
               disabled={isLoading}
             >

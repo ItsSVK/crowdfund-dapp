@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Campaign } from '@/types/campaign';
+import { ActiveFilter, Campaign } from '@/types/campaign';
 import { useState } from 'react';
 import { useAnchorProgram } from '@/hooks/useAnchorProgram';
 import { useCampaigns } from '@/hooks/useCampaigns';
@@ -26,9 +26,8 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
   const [isClaimed, setIsClaimed] = useState(false);
   const { program, provider } = useAnchorProgram();
   const { refreshCampaigns } = useCampaigns();
-
   const campaignStatus = campaign?.account.campaignStatus();
-  if (campaignStatus?.status === 'Active' || isClaimed) return;
+  if (campaignStatus?.status === ActiveFilter.Active || isClaimed) return;
 
   const handleProceedClaim = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +38,9 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
       if (!program || !provider || !provider.wallet.publicKey)
         throw new Error('Wallet not connected');
 
-      if (campaignStatus?.status === 'Active') {
-        throw new Error('Campaign is still active');
+      if (campaignStatus?.status === ActiveFilter.Active) {
+        toast.error('Campaign is still active');
+        return;
       }
 
       const [contributor_recordPda] =
@@ -61,7 +61,7 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
       const accounts = {
         campaign: campaign.publicKey,
       };
-      if (campaignStatus?.status === 'Cancelled') {
+      if (campaignStatus?.status === ActiveFilter.Cancelled) {
         if (campaignStatus?.isContributed) {
           // withdraw if cancelled
           await program.methods
@@ -74,7 +74,8 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
             })
             .rpc();
         } else {
-          throw new Error('You have not contributed to this campaign');
+          toast.error('You have not contributed to this campaign');
+          return;
         }
       } else {
         if (campaignStatus?.isGoalReached && campaignStatus?.amITheOwner) {
@@ -102,7 +103,8 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
             })
             .rpc();
         } else {
-          throw new Error('You have not contributed to this campaign');
+          toast.error('You have not contributed to this campaign');
+          return;
         }
       }
 
@@ -110,7 +112,6 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
         description: 'Your request has been sent to the network.',
       });
       onOpenChange(false);
-      refreshCampaigns();
       setIsClaimed(true);
     } catch (error) {
       console.error('Full error:', error);
@@ -129,6 +130,7 @@ export function ClaimModal({ open, onOpenChange, campaign }: ClaimModalProps) {
       }
     } finally {
       setIsLoading(false);
+      refreshCampaigns();
     }
   };
 
