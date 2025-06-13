@@ -187,6 +187,37 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
   const [lastPublicKey, setLastPublicKey] = useState<string | null>(null);
   const [deadlineTimestamp, setDeadlineTimestamp] = useState(Date.now());
 
+  // Simple approach: refresh data when window gets focus (user switches back to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && program) {
+        console.log('Tab focused - checking for account changes...');
+        // Small delay to ensure wallet state is updated
+        setTimeout(() => {
+          const currentKey = publicKey?.toBase58() || null;
+          const lastKey = lastPublicKey;
+
+          if (currentKey !== lastKey) {
+            console.log('Account changed detected on focus:', {
+              from: lastKey,
+              to: currentKey,
+            });
+            // Force refresh by calling the refresh function
+            refreshCampaigns();
+          }
+        }, 500);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [program, publicKey, lastPublicKey]);
+
   // Initial fetch when program becomes available
   useEffect(() => {
     const fetchCampaigns = async () => {

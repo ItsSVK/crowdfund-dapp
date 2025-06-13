@@ -167,6 +167,9 @@ pub mod crowdfund {
     pub fn cancel_campaign(ctx: Context<CancelCampaign>) -> Result<()> {
         let clock = Clock::get()?;
         let campaign = &mut ctx.accounts.campaign;
+
+        // Check if owner is the owner of the campaign
+        require!(campaign.owner == *ctx.accounts.owner.key, CustomError::NotOwner);
         
         // Check if campaign is already cancelled
         require!(!campaign.is_cancelled, CustomError::CampaignAlreadyCancelled);
@@ -326,4 +329,6 @@ pub enum CustomError {
     CampaignNotCancelled,
     #[msg("The campaign is already cancelled.")]
     CampaignAlreadyCancelled,
+    #[msg("You are not the owner of the campaign.")]
+    NotOwner,
 }

@@ -4,15 +4,16 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, CheckIcon, Copy, Wallet } from 'lucide-react';
+import { CalendarDays, CheckIcon, Copy, Wallet, X } from 'lucide-react';
 import * as anchor from '@coral-xyz/anchor';
-import { Campaign, CampaignStatus } from '@/types/campaign';
+import { ActiveFilter, Campaign, CampaignStatus } from '@/types/campaign';
 import React, { memo, useMemo } from 'react';
 import { CustomWalletButton } from '@/components/pages/CustomWalletButton';
 interface CampaignCardProps {
   campaign: Campaign;
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
+  onCancel: (campaign: Campaign) => void;
   getCampaignStatus: (campaign: Campaign) => CampaignStatus | null;
   deadlineTimestamp: number;
 }
@@ -21,6 +22,7 @@ function CampaignCardComponent({
   campaign,
   onContribute,
   onClaim,
+  onCancel,
   getCampaignStatus,
   deadlineTimestamp,
 }: CampaignCardProps) {
@@ -77,9 +79,23 @@ function CampaignCardComponent({
             <CardTitle className="text-lg line-clamp-2">
               {campaign.account.name}
             </CardTitle>
-            <Badge className={`${status?.color} text-white text-xs`}>
-              {status?.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={`${status?.color} text-white text-xs`}>
+                {status?.status}
+              </Badge>
+              {status?.status === ActiveFilter.Active &&
+                status?.amITheOwner && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => onCancel(campaign)}
+                    title="Cancel Campaign"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {campaign.account.description}
@@ -196,7 +212,6 @@ function CampaignCardComponent({
                   status.btnText === 'Claim' ||
                   status.btnText === 'Withdraw'
                 ) {
-                  // console.log('Claiming campaign', campaign);
                   onClaim(campaign);
                 }
               }}

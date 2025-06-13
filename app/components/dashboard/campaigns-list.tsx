@@ -18,6 +18,7 @@ interface CampaignsListProps {
   userFilter: UserFilter | null;
   onContribute: (campaign: Campaign) => void;
   onClaim: (campaign: Campaign) => void;
+  onCancel: (campaign: Campaign) => void;
   onCreateCampaign: () => void;
   getCampaignStatus: (campaign: Campaign) => CampaignStatus | null;
 }
@@ -27,6 +28,7 @@ function CampaignsListComponent({
   userFilter,
   onContribute,
   onClaim,
+  onCancel,
   onCreateCampaign,
   getCampaignStatus,
 }: CampaignsListProps) {
@@ -168,6 +170,7 @@ function CampaignsListComponent({
                   campaign={campaign}
                   onContribute={onContribute}
                   onClaim={onClaim}
+                  onCancel={onCancel}
                   getCampaignStatus={getCampaignStatus}
                   deadlineTimestamp={deadlineTimestamp}
                 />

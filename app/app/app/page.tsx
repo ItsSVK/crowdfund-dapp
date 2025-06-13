@@ -14,12 +14,14 @@ import { Campaign } from '@/types/campaign';
 import { ClaimModal } from '@/components/claim-modal';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { ActiveFilter, UserFilter } from '@/types/campaign';
+import { CancelModal } from '@/components/cancel-modal';
 
 export default function Dashboard() {
   const { campaigns, refreshCampaigns } = useCampaigns();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [contributeModalOpen, setContributeModalOpen] = useState(false);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
     null
   );
@@ -42,9 +44,13 @@ export default function Dashboard() {
 
   // Handle opening claim modal
   const handleClaimClick = useCallback((campaign: Campaign) => {
-    // console.log('Claiming campaign from page', campaign);
     setSelectedCampaign(campaign);
     setClaimModalOpen(true);
+  }, []);
+
+  const handleCancelClick = useCallback((campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setCancelModalOpen(true);
   }, []);
 
   const handleCreateCampaign = useCallback(() => {
@@ -118,6 +124,7 @@ export default function Dashboard() {
           userFilter={userFilter}
           onContribute={handleContributeClick}
           onClaim={handleClaimClick}
+          onCancel={handleCancelClick}
           onCreateCampaign={handleCreateCampaign}
           getCampaignStatus={getCampaignStatus}
         />
@@ -140,6 +147,13 @@ export default function Dashboard() {
       <ClaimModal
         open={claimModalOpen}
         onOpenChange={setClaimModalOpen}
+        campaign={selectedCampaign}
+      />
+
+      {/* Cancel Modal */}
+      <CancelModal
+        open={cancelModalOpen}
+        onOpenChange={setCancelModalOpen}
         campaign={selectedCampaign}
       />
     </>
