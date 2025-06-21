@@ -6,7 +6,9 @@
     "dev": "next dev",
     "start": "next start",
     "lint": "bunx next lint --max-warnings=0",
-    "build": "bun run lint && bunx next build"
+    "build": "bun run lint && bunx next build && bun run postbuild",
+    "postbuild": "next-sitemap",
+    "sitemap": "next-sitemap"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
@@ -30,6 +32,7 @@
     "framer-motion": "^12.16.0",
     "lucide-react": "^0.513.0",
     "next": "15.3.3",
+    "next-sitemap": "^4.2.3",
     "next-themes": "^0.4.6",
     "postcss": "^8.5.4",
     "react": "^19.0.0",
